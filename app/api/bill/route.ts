@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUser } from "@/lib/get-auth-user";
 import { requireRole } from "@/lib/role-guard";
-import type { Prisma, CartItem, Product } from "@prisma/client";
-
-type CartItemWithProduct = CartItem & {
-  product: Product;
-};
+import type { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
@@ -20,17 +16,18 @@ export async function POST(req: Request) {
   try {
     const bill = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-        const cartItems: CartItemWithProduct[] =
-          await tx.cartItem.findMany({
-            where: { userId: user.userId },
-            include: { product: true },
-          });
+        const cartItems = await tx.cartItem.findMany({
+          where: { userId: user.userId },
+          include: { product: true },
+        });
 
         if (cartItems.length === 0) {
           throw new Error("Cart is empty");
         }
 
-        // Stock check
+        /* ======================
+           STOCK CHECK
+        ====================== */
         for (const item of cartItems) {
           if (item.product.stock < item.quantity) {
             throw new Error(
@@ -39,19 +36,42 @@ export async function POST(req: Request) {
           }
         }
 
-        // Amounts
-        const taxableAmount = cartItems.reduce(
-          (sum, item) =>
-            sum + item.product.price * item.quantity,
-          0
-        );
+        /* ======================
+           CALCULATIONS
+        ====================== */
+        let taxableAmount = 0;
+        let totalDiscount = 0;
 
-        const cgst = taxableAmount * 0.09;
-        const sgst = taxableAmount * 0.09;
+        const gstPercent =
+          typeof body.gstPercent === "number"
+            ? body.gstPercent
+            : 18;
+
+        for (const item of cartItems) {
+          const base =
+            item.price * item.quantity;
+
+          const discount =
+            item.discountType === "PERCENT"
+              ? (base * item.discount) / 100
+              : item.discount;
+
+          const lineTaxable = base - discount;
+
+          taxableAmount += lineTaxable;
+          totalDiscount += discount;
+        }
+
+        const cgst = taxableAmount * (gstPercent / 2 / 100);
+        const sgst = taxableAmount * (gstPercent / 2 / 100);
         const igst = 0;
-        const totalAmount = taxableAmount + cgst + sgst + igst;
 
-        // ✅ CREATE BILL
+        const totalAmount =
+          taxableAmount + cgst + sgst;
+
+        /* ======================
+           CREATE BILL
+        ====================== */
         const bill = await tx.bill.create({
           data: {
             customerName:
@@ -62,35 +82,64 @@ export async function POST(req: Request) {
             companyGstin: "22AAAAA0000A1Z5",
             companyAddress: "Your Company Address",
 
+            gstType: "CGST_SGST",
+            gstPercent,
+
             taxableAmount,
             cgst,
             sgst,
             igst,
+
+            totalDiscount,
+            roundOff: 0,
             totalAmount,
 
-            paymentMethod: body.paymentMethod || "CASH",
+            paymentMethod:
+              body.paymentMethod || "CASH",
           },
         });
 
-        // Items + stock
+        /* ======================
+           BILL ITEMS + STOCK
+        ====================== */
         for (const item of cartItems) {
+          const base =
+            item.price * item.quantity;
+
+          const discount =
+            item.discountType === "PERCENT"
+              ? (base * item.discount) / 100
+              : item.discount;
+
+          const lineTotal = base - discount;
+
           await tx.billItem.create({
             data: {
               billId: bill.id,
               productId: item.productId,
               quantity: item.quantity,
-              price: item.product.price,
+              price: item.price,
+
+              discount: item.discount,
+              discountType: item.discountType,
+              gstPercent: item.gstPercent,
+              lineTotal,
             },
           });
 
           await tx.product.update({
             where: { id: item.productId },
             data: {
-              stock: { decrement: item.quantity },
+              stock: {
+                decrement: item.quantity,
+              },
             },
           });
         }
 
+        /* ======================
+           CLEAR CART
+        ====================== */
         await tx.cartItem.deleteMany({
           where: { userId: user.userId },
         });
@@ -104,9 +153,12 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error(error);
+    console.error("Bill error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to create bill" },
+      {
+        message:
+          error.message || "Failed to create bill",
+      },
       { status: 400 }
     );
   }

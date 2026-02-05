@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./billing.module.css";
 
 type Product = {
@@ -13,6 +14,7 @@ type Product = {
 type CartItem = {
   product: Product;
   qty: number;
+  discount: number;
 };
 
 export default function BillingClient({
@@ -20,42 +22,63 @@ export default function BillingClient({
 }: {
   products: Product[];
 }) {
-  /* ===== Customer ===== */
+  const router = useRouter();
+
+  /* ================= CUSTOMER ================= */
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
 
-  /* ===== UI ===== */
+  /* ================= UI ================= */
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [gstPercent, setGstPercent] = useState(18);
+  const [paymentMethod, setPaymentMethod] =
+    useState<"CASH" | "UPI" | "CARD">("CASH");
+
+  const [roundOff, setRoundOff] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /* =====================
-     Load cart
-  ===================== */
+  /* ================= LOAD CART ================= */
+  const loadCart = async () => {
+    const res = await fetch("/api/cart");
+    const data = await res.json();
+    setCart(
+      (data.cart || []).map((i: any) => ({
+        product: i.product,
+        qty: i.quantity,
+        discount: i.discount ?? 0,
+      }))
+    );
+  };
+
   useEffect(() => {
-    fetch("/api/cart")
-      .then((res) => res.json())
-      .then((data) =>
-        setCart(
-          (data.cart || []).map((i: any) => ({
-            product: i.product,
-            qty: i.quantity,
-          }))
-        )
-      );
+    loadCart();
   }, []);
 
-  /* =====================
-     Search
-  ===================== */
+  /* ================= KEYBOARD SHORTCUTS ================= */
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        createInvoice();
+      }
+      if (e.key === "Escape") {
+        resetInvoice();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () =>
+      window.removeEventListener("keydown", handler);
+  }, [cart, customerName, mobile, gstPercent, paymentMethod]);
+
+  /* ================= SEARCH ================= */
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  /* =====================
-     Cart handlers
-  ===================== */
+  /* ================= CART ACTIONS ================= */
   const addToCart = async (product: Product) => {
     setError(null);
     const res = await fetch("/api/cart", {
@@ -69,111 +92,117 @@ export default function BillingClient({
 
     const data = await res.json();
     if (!res.ok) return setError(data.message);
-
-    setCart(
-      data.cart.map((i: any) => ({
-        product: i.product,
-        qty: i.quantity,
-      }))
-    );
+    loadCart();
   };
 
   const updateQty = async (id: number, qty: number) => {
-    if (qty <= 0) return;
-    setError(null);
+    if (qty < 1) return;
 
     const res = await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: id, quantity: qty }),
+      body: JSON.stringify({
+        productId: id,
+        quantity: qty, // ✅ absolute qty
+      }),
     });
 
     const data = await res.json();
     if (!res.ok) return setError(data.message);
+    loadCart();
+  };
 
-    setCart(
-      data.cart.map((i: any) => ({
-        product: i.product,
-        qty: i.quantity,
-      }))
-    );
+  const updateDiscount = async (
+    id: number,
+    discount: number
+  ) => {
+    if (discount < 0) return;
+
+    await fetch("/api/cart", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: id,
+        discount,
+      }),
+    });
+
+    loadCart();
   };
 
   const removeItem = async (id: number) => {
     await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: id, quantity: 0 }),
+      body: JSON.stringify({
+        productId: id,
+        quantity: 0,
+      }),
     });
 
-    const res = await fetch("/api/cart");
-    const data = await res.json();
-    setCart(
-      data.cart.map((i: any) => ({
-        product: i.product,
-        qty: i.quantity,
-      }))
-    );
+    loadCart();
   };
 
-  const resetInvoice = async () => {
+  const resetInvoice = () => {
     setCart([]);
     setCustomerName("");
     setMobile("");
+    setRoundOff(0);
     setError(null);
   };
 
-  /* =====================
-     Calculation
-  ===================== */
+  /* ================= CALCULATION ================= */
   const taxable = cart.reduce(
-    (sum, i) => sum + i.product.price * i.qty,
+    (sum, i) =>
+      sum +
+      i.product.price * i.qty -
+      i.discount,
     0
   );
-  const gst = taxable * 0.18;
-  const total = taxable + gst;
 
-  /* =====================
-     Create invoice
-  ===================== */
-const createInvoice = async () => {
-  if (cart.length === 0) {
-    setError("Cart is empty");
-    return;
-  }
+  const gstAmount = (taxable * gstPercent) / 100;
+  const grossTotal = taxable + gstAmount;
+  const finalTotal = grossTotal + roundOff;
 
-  setLoading(true);
-  setError(null);
+  /* ================= CREATE INVOICE ================= */
+  const createInvoice = async () => {
+    if (cart.length === 0) {
+      setError("Cart is empty");
+      return;
+    }
 
-  const res = await fetch("/api/bill", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      customerName,
-      customerMobile: mobile || null,
-      paymentMethod: "CASH",
-    }),
-  });
+    setLoading(true);
+    setError(null);
 
-  const data = await res.json();
+    const res = await fetch("/api/bill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customerName,
+        customerMobile: mobile || null,
+        gstPercent,
+        paymentMethod,
+        roundOff,
+      }),
+    });
 
-  if (!res.ok) {
-    setError(data.message || "Failed to create invoice");
-    setLoading(false);
-    return;
-  }
+    const data = await res.json();
 
-  // ✅ redirect to invoice view
-  window.location.href = `/dashboard/invoice/${data.bill.id}`;
-};
+    if (!res.ok) {
+      setError(data.message || "Failed to create invoice");
+      setLoading(false);
+      return;
+    }
 
+    router.push(`/dashboard/invoice/${data.bill.id}`);
+  };
+
+  /* ================= UI ================= */
   return (
     <div className={styles.layout}>
-      {/* LEFT */}
+      {/* ================= LEFT ================= */}
       <div className={styles.products}>
-        <h2>Add Products</h2>
+        <h2>Products</h2>
 
         <input
           className={styles.search}
@@ -189,24 +218,29 @@ const createInvoice = async () => {
               className={styles.product}
               onClick={() => addToCart(p)}
             >
-              <span>{p.name}</span>
+              <div>
+                <strong>{p.name}</strong>
+                <div className={styles.stock}>
+                  Stock:{" "}
+                  <span
+                    className={
+                      p.stock <= 5 ? styles.lowStock : ""
+                    }
+                  >
+                    {p.stock}
+                  </span>
+                </div>
+              </div>
               <span>₹{p.price}</span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* RIGHT – INVOICE PREVIEW */}
+      {/* ================= RIGHT ================= */}
       <div className={styles.summary}>
         <h3>Invoice</h3>
 
-        {/* Company */}
-        <div className={styles.company}>
-          <strong>Billing Pro</strong>
-          <small>GSTIN: 22AAAAA0000A1Z5</small>
-        </div>
-
-        {/* Customer */}
         <input
           placeholder="Customer name"
           value={customerName}
@@ -218,68 +252,152 @@ const createInvoice = async () => {
           onChange={(e) => setMobile(e.target.value)}
         />
 
+        {/* Payment Method */}
+        <select
+          value={paymentMethod}
+          onChange={(e) =>
+            setPaymentMethod(
+              e.target.value as "CASH" | "UPI" | "CARD"
+            )
+          }
+        >
+          <option value="CASH">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="CARD">Card</option>
+        </select>
+
         {error && (
           <div className={styles.error}>{error}</div>
         )}
 
-        {/* Items */}
-        {cart.map((i) => (
-          <div key={i.product.id} className={styles.cartRow}>
-            <span>{i.product.name}</span>
+        {/* ================= CART ================= */}
+       {cart.map((i) => (
+  <div key={i.product.id} className={styles.cartRow}>
+    <span className={styles.itemName}>
+      {i.product.name}
+    </span>
 
-            <div className={styles.qtyBox}>
-              <button
-                onClick={() =>
-                  updateQty(i.product.id, i.qty - 1)
-                }
-              >
-                −
-              </button>
-              <span>{i.qty}</span>
-              <button
-                onClick={() =>
-                  updateQty(i.product.id, i.qty + 1)
-                }
-              >
-                +
-              </button>
-            </div>
+    {/* Qty */}
+    <div className={styles.qtyBox}>
+      <button
+        disabled={i.qty === 1}
+        onClick={() =>
+          updateQty(i.product.id, i.qty - 1)
+        }
+      >
+        −
+      </button>
 
-            <span>
-              ₹{i.product.price * i.qty}
-            </span>
+      <input
+        className={styles.qtyInput}
+        type="number"
+        min={1}
+        value={i.qty}
+        onChange={(e) =>
+          updateQty(
+            i.product.id,
+            Number(e.target.value)
+          )
+        }
+      />
 
-            <button
-              onClick={() =>
-                removeItem(i.product.id)
-              }
-            >
-              ✖
-            </button>
-          </div>
-        ))}
+      <button
+        onClick={() =>
+          updateQty(i.product.id, i.qty + 1)
+        }
+      >
+        +
+      </button>
+    </div>
+
+    {/* 🔥 PER ITEM DISCOUNT */}
+    <div className={styles.discountBox}>
+      <span className={styles.currency}>₹</span>
+      <input
+        className={styles.discountInput}
+        type="number"
+        min={0}
+        value={i.discount}
+        onChange={(e) =>
+          updateDiscount(
+            i.product.id,
+            Number(e.target.value)
+          )
+        }
+      />
+    </div>
+
+    {/* Amount */}
+    <span className={styles.amount}>
+      ₹
+      {(
+        i.product.price * i.qty -
+        i.discount
+      ).toFixed(2)}
+    </span>
+
+    <button
+      className={styles.removeBtn}
+      onClick={() => removeItem(i.product.id)}
+    >
+      ✖
+    </button>
+  </div>
+))}
+
 
         <hr />
+
+        {/* GST */}
+        <div className={styles.row}>
+          <span>GST %</span>
+          <select
+            value={gstPercent}
+            onChange={(e) =>
+              setGstPercent(Number(e.target.value))
+            }
+          >
+            {[0, 5, 12, 18, 28].map((g) => (
+              <option key={g} value={g}>
+                {g}%
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Round Off */}
+        <div className={styles.row}>
+          <span>Round Off</span>
+          <input
+            className={styles.roundOffInput}
+            type="number"
+            step="0.01"
+            value={roundOff}
+            onChange={(e) =>
+              setRoundOff(Number(e.target.value))
+            }
+          />
+        </div>
 
         <div className={styles.row}>
           <span>Taxable</span>
           <span>₹{taxable.toFixed(2)}</span>
         </div>
         <div className={styles.row}>
-          <span>GST (18%)</span>
-          <span>₹{gst.toFixed(2)}</span>
+          <span>GST</span>
+          <span>₹{gstAmount.toFixed(2)}</span>
         </div>
 
         <div className={styles.total}>
           <strong>Total</strong>
-          <strong>₹{total.toFixed(2)}</strong>
+          <strong>₹{finalTotal.toFixed(2)}</strong>
         </div>
 
         <button
           className={styles.resetBtn}
           onClick={resetInvoice}
         >
-          Reset
+          Reset (Esc)
         </button>
 
         <button
@@ -287,7 +405,9 @@ const createInvoice = async () => {
           onClick={createInvoice}
           disabled={loading}
         >
-          {loading ? "Creating..." : "Create Invoice"}
+          {loading
+            ? "Creating..."
+            : "Create Invoice (F2)"}
         </button>
       </div>
     </div>
