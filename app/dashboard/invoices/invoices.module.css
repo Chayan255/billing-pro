@@ -1,0 +1,74 @@
+.container {
+  max-width: 1100px;
+  margin: 40px auto;
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  color: #111;
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  background: #f5f5f5;
+  color: #111;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+.table td {
+  padding: 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.right {
+  text-align: right;
+}
+
+.center {
+  text-align: center;
+}
+
+.viewBtn {
+  padding: 6px 14px;
+  background: #000;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.viewBtn:hover {
+  background: #222;
+}
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+  font-size: 15px;
+}
+
+/* Print safe */
+@media print {
+  .container {
+    box-shadow: none;
+    margin: 0;
+    padding: 0;
+  }
+}
