@@ -8,14 +8,18 @@ type CartItemWithProduct = CartItem & {
   product: Product;
 };
 
-export async function POST() {
+export async function POST(req: Request) {
   const user = await getAuthUser();
   requireRole(user.role, ["ADMIN", "STAFF"]);
+
+  let body: any = {};
+  try {
+    body = await req.json();
+  } catch {}
 
   try {
     const bill = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-
         const cartItems: CartItemWithProduct[] =
           await tx.cartItem.findMany({
             where: { userId: user.userId },
@@ -35,8 +39,8 @@ export async function POST() {
           }
         }
 
-        // Amount calculation
-        const taxableAmount = cartItems.reduce<number>(
+        // Amounts
+        const taxableAmount = cartItems.reduce(
           (sum, item) =>
             sum + item.product.price * item.quantity,
           0
@@ -45,21 +49,30 @@ export async function POST() {
         const cgst = taxableAmount * 0.09;
         const sgst = taxableAmount * 0.09;
         const igst = 0;
-
         const totalAmount = taxableAmount + cgst + sgst + igst;
 
-        // ✅ THIS IS WHERE RED LINE WAS
+        // ✅ CREATE BILL
         const bill = await tx.bill.create({
           data: {
+            customerName:
+              body.customerName || "Walk-in Customer",
+            customerMobile: body.customerMobile || null,
+
+            companyName: "Billing Pro",
+            companyGstin: "22AAAAA0000A1Z5",
+            companyAddress: "Your Company Address",
+
             taxableAmount,
             cgst,
             sgst,
             igst,
             totalAmount,
-            paymentMethod: "CASH",
+
+            paymentMethod: body.paymentMethod || "CASH",
           },
         });
 
+        // Items + stock
         for (const item of cartItems) {
           await tx.billItem.create({
             data: {
@@ -91,7 +104,7 @@ export async function POST() {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error("Bill create error:", error);
+    console.error(error);
     return NextResponse.json(
       { message: error.message || "Failed to create bill" },
       { status: 400 }

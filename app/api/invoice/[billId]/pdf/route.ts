@@ -1,9 +1,7 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import PDFDocument from "pdfkit";
-
 
 export async function GET(
   _req: Request,
@@ -13,8 +11,8 @@ export async function GET(
   const id = Number(billId);
 
   if (!id) {
-    return NextResponse.json(
-      { message: "Invalid bill id" },
+    return new Response(
+      JSON.stringify({ message: "Invalid bill id" }),
       { status: 400 }
     );
   }
@@ -29,8 +27,8 @@ export async function GET(
   });
 
   if (!bill) {
-    return NextResponse.json(
-      { message: "Invoice not found" },
+    return new Response(
+      JSON.stringify({ message: "Invoice not found" }),
       { status: 404 }
     );
   }
@@ -40,63 +38,122 @@ export async function GET(
 
   doc.on("data", (chunk) => chunks.push(chunk));
 
-  // Header
-  doc.fontSize(20).text("Billing Pro", { align: "center" });
-  doc.moveDown(0.5);
-  doc.fontSize(12).text(`Invoice #${bill.id}`, { align: "center" });
+  /* =====================
+     COMPANY HEADER
+  ===================== */
+  doc.fontSize(20).text(bill.companyName, { align: "center" });
+  doc.moveDown(0.3);
+  doc
+    .fontSize(10)
+    .text(bill.companyAddress ?? "-", { align: "center" });
+  doc
+    .text(`GSTIN: ${bill.companyGstin}`, {
+      align: "center",
+    });
+
+  doc.moveDown(1);
+
+  /* =====================
+     INVOICE META
+  ===================== */
+  doc.fontSize(12);
+  doc.text(`Invoice #: ${bill.id}`);
   doc.text(
-    `Date: ${new Date(bill.createdAt).toLocaleString()}`,
-    { align: "center" }
+    `Date: ${new Date(bill.createdAt).toLocaleString()}`
   );
 
-  doc.moveDown(2);
-
-  // Table Header
-  doc.text("Item", 50);
-  doc.text("Qty", 300);
-  doc.text("Price", 360);
-  doc.text("Total", 440);
   doc.moveDown(0.5);
+
+  /* =====================
+     CUSTOMER INFO
+  ===================== */
+  doc.text(
+    `Customer Name: ${
+      bill.customerName || "Walk-in Customer"
+    }`
+  );
+
+  if (bill.customerMobile) {
+    doc.text(`Mobile: ${bill.customerMobile}`);
+  }
+
+  doc.moveDown(1);
+
+  /* =====================
+     TABLE HEADER
+  ===================== */
+  doc.fontSize(11);
+  doc.text("Item", 50);
+  doc.text("Qty", 280);
+  doc.text("Price", 340);
+  doc.text("Total", 420);
+
+  doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
   doc.moveDown(0.5);
 
-  // Items
+  /* =====================
+     ITEMS
+  ===================== */
   bill.items.forEach((item) => {
     doc.text(item.product.name, 50);
-    doc.text(item.quantity.toString(), 300);
-    doc.text(`₹${item.price.toFixed(2)}`, 360);
+    doc.text(item.quantity.toString(), 280);
+    doc.text(`₹${item.price.toFixed(2)}`, 340);
     doc.text(
       `₹${(item.price * item.quantity).toFixed(2)}`,
-      440
+      420
     );
-    doc.moveDown(0.5);
+    doc.moveDown(0.4);
   });
 
-  doc.moveDown(1);
+  doc.moveDown(0.5);
   doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-  doc.moveDown(1);
+  doc.moveDown(0.8);
+
+  /* =====================
+     TAX SUMMARY
+  ===================== */
+  doc.fontSize(11);
+  doc.text(
+    `Taxable Amount: ₹${bill.taxableAmount.toFixed(2)}`,
+    { align: "right" }
+  );
+  doc.text(`CGST (9%): ₹${bill.cgst.toFixed(2)}`, {
+    align: "right",
+  });
+  doc.text(`SGST (9%): ₹${bill.sgst.toFixed(2)}`, {
+    align: "right",
+  });
+
+  doc.moveDown(0.5);
 
   doc
     .fontSize(14)
-    .text(`Total: ₹${bill.totalAmount.toFixed(2)}`, {
-      align: "right",
+    .text(
+      `Grand Total: ₹${bill.totalAmount.toFixed(2)}`,
+      { align: "right" }
+    );
+
+  doc.moveDown(1);
+
+  doc
+    .fontSize(10)
+    .text("Thank you for your business!", {
+      align: "center",
     });
 
   doc.end();
 
   const pdfBuffer = await new Promise<Buffer>((resolve) => {
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("end", () =>
+      resolve(Buffer.concat(chunks))
+    );
   });
 
- return new Response(
-  new Uint8Array(pdfBuffer),
-  {
+  return new Response(new Uint8Array(pdfBuffer), {
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename=invoice-${bill.id}.pdf`,
     },
-  }
-);
-
-
+  });
 }

@@ -20,42 +20,44 @@ export default function BillingClient({
 }: {
   products: Product[];
 }) {
+  /* ===== Customer ===== */
+  const [customerName, setCustomerName] = useState("");
+  const [mobile, setMobile] = useState("");
+
+  /* ===== UI ===== */
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-
   /* =====================
-     Load cart from DB
+     Load cart
   ===================== */
   useEffect(() => {
     fetch("/api/cart")
       .then((res) => res.json())
-      .then((data) => {
+      .then((data) =>
         setCart(
           (data.cart || []).map((i: any) => ({
             product: i.product,
             qty: i.quantity,
           }))
-        );
-      });
+        )
+      );
   }, []);
 
   /* =====================
-     Filter products
+     Search
   ===================== */
   const filteredProducts = products.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
   /* =====================
-     Add to cart (DB)
+     Cart handlers
   ===================== */
   const addToCart = async (product: Product) => {
-    if (product.stock === 0) return;
-
+    setError(null);
     const res = await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -66,12 +68,7 @@ export default function BillingClient({
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.message || "Failed to add item");
-return;
-
-    }
+    if (!res.ok) return setError(data.message);
 
     setCart(
       data.cart.map((i: any) => ({
@@ -81,30 +78,18 @@ return;
     );
   };
 
-  /* =====================
-     Update quantity (DB)
-  ===================== */
-  
-  const updateQty = async (productId: number, qty: number) => {
+  const updateQty = async (id: number, qty: number) => {
     if (qty <= 0) return;
+    setError(null);
 
     const res = await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productId,
-        quantity: qty,
-      }),
+      body: JSON.stringify({ productId: id, quantity: qty }),
     });
 
     const data = await res.json();
-
-    if (!res.ok) {
-     setError(data.message || "Invalid quantity");
-return;
-
-      return;
-    }
+    if (!res.ok) return setError(data.message);
 
     setCart(
       data.cart.map((i: any) => ({
@@ -114,23 +99,15 @@ return;
     );
   };
 
-  /* =====================
-     Remove item (set qty = 0)
-  ===================== */
-  const removeItem = async (productId: number) => {
-    // easiest: reset cart by refetch
+  const removeItem = async (id: number) => {
     await fetch("/api/cart", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        productId,
-        quantity: 0,
-      }),
+      body: JSON.stringify({ productId: id, quantity: 0 }),
     });
 
     const res = await fetch("/api/cart");
     const data = await res.json();
-
     setCart(
       data.cart.map((i: any) => ({
         product: i.product,
@@ -139,54 +116,64 @@ return;
     );
   };
 
+  const resetInvoice = async () => {
+    setCart([]);
+    setCustomerName("");
+    setMobile("");
+    setError(null);
+  };
+
   /* =====================
-     Calculations
+     Calculation
   ===================== */
   const taxable = cart.reduce(
     (sum, i) => sum + i.product.price * i.qty,
     0
   );
-  const cgst = taxable * 0.09;
-  const sgst = taxable * 0.09;
-  const total = taxable + cgst + sgst;
+  const gst = taxable * 0.18;
+  const total = taxable + gst;
 
   /* =====================
-     Create Invoice
+     Create invoice
   ===================== */
-  const createInvoice = async () => {
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
+const createInvoice = async () => {
+  if (cart.length === 0) {
+    setError("Cart is empty");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  setLoading(true);
+  setError(null);
 
-      const res = await fetch("/api/bill", {
-        method: "POST",
-      });
+  const res = await fetch("/api/bill", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      customerName,
+      customerMobile: mobile || null,
+      paymentMethod: "CASH",
+    }),
+  });
 
-      const data = await res.json();
+  const data = await res.json();
 
-      if (!res.ok) {
-        alert(data.message || "Failed to create invoice");
-        setLoading(false);
-        return;
-      }
+  if (!res.ok) {
+    setError(data.message || "Failed to create invoice");
+    setLoading(false);
+    return;
+  }
 
-      // 🔥 redirect to invoice view
-      window.location.href = `/dashboard/invoice/${data.bill.id}`;
-    } catch {
-      alert("Failed to create invoice");
-      setLoading(false);
-    }
-  };
+  // ✅ redirect to invoice view
+  window.location.href = `/dashboard/invoice/${data.bill.id}`;
+};
 
   return (
     <div className={styles.layout}>
       {/* LEFT */}
       <div className={styles.products}>
-        <h2>Create Invoice</h2>
+        <h2>Add Products</h2>
 
         <input
           className={styles.search}
@@ -204,39 +191,59 @@ return;
             >
               <span>{p.name}</span>
               <span>₹{p.price}</span>
-              <small>Stock: {p.stock}</small>
             </div>
           ))}
         </div>
       </div>
 
-      {/* RIGHT */}
+      {/* RIGHT – INVOICE PREVIEW */}
       <div className={styles.summary}>
-        <h3>Invoice Summary</h3>
+        <h3>Invoice</h3>
+
+        {/* Company */}
+        <div className={styles.company}>
+          <strong>Billing Pro</strong>
+          <small>GSTIN: 22AAAAA0000A1Z5</small>
+        </div>
+
+        {/* Customer */}
+        <input
+          placeholder="Customer name"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+        />
+        <input
+          placeholder="Mobile number"
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value)}
+        />
+
         {error && (
-  <div className={styles.error}>
-    {error}
-  </div>
-)}
+          <div className={styles.error}>{error}</div>
+        )}
 
-
-        {cart.length === 0 && <p>No items</p>}
-
+        {/* Items */}
         {cart.map((i) => (
           <div key={i.product.id} className={styles.cartRow}>
             <span>{i.product.name}</span>
 
-            <input
-              type="number"
-              min={1}
-              value={i.qty}
-              onChange={(e) =>
-                updateQty(
-                  i.product.id,
-                  Number(e.target.value)
-                )
-              }
-            />
+            <div className={styles.qtyBox}>
+              <button
+                onClick={() =>
+                  updateQty(i.product.id, i.qty - 1)
+                }
+              >
+                −
+              </button>
+              <span>{i.qty}</span>
+              <button
+                onClick={() =>
+                  updateQty(i.product.id, i.qty + 1)
+                }
+              >
+                +
+              </button>
+            </div>
 
             <span>
               ₹{i.product.price * i.qty}
@@ -259,12 +266,8 @@ return;
           <span>₹{taxable.toFixed(2)}</span>
         </div>
         <div className={styles.row}>
-          <span>CGST (9%)</span>
-          <span>₹{cgst.toFixed(2)}</span>
-        </div>
-        <div className={styles.row}>
-          <span>SGST (9%)</span>
-          <span>₹{sgst.toFixed(2)}</span>
+          <span>GST (18%)</span>
+          <span>₹{gst.toFixed(2)}</span>
         </div>
 
         <div className={styles.total}>
@@ -272,16 +275,12 @@ return;
           <strong>₹{total.toFixed(2)}</strong>
         </div>
 
-        <select
-          value={paymentMethod}
-          onChange={(e) =>
-            setPaymentMethod(e.target.value)
-          }
+        <button
+          className={styles.resetBtn}
+          onClick={resetInvoice}
         >
-          <option value="CASH">Cash</option>
-          <option value="UPI">UPI</option>
-          <option value="CARD">Card</option>
-        </select>
+          Reset
+        </button>
 
         <button
           className={styles.createBtn}

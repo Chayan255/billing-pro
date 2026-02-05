@@ -19,6 +19,16 @@ enum PaymentMethod {
   CARD
 }
 
+enum DiscountType {
+  FLAT
+  PERCENT
+}
+
+enum GstType {
+  CGST_SGST
+  IGST
+}
+
 /* =======================
    USER
 ======================= */
@@ -38,7 +48,7 @@ model Customer {
   id        Int      @id @default(autoincrement())
   name      String
   phone     String?
-  gstin     String?   // GST number (optional)
+  gstin     String?
   createdAt DateTime @default(now())
 
   bills Bill[]
@@ -61,33 +71,60 @@ model Product {
 }
 
 /* =======================
-   BILL (GST READY)
+   BILL (PROFESSIONAL GST)
 ======================= */
 model Bill {
-  id             Int      @id @default(autoincrement())
-  totalAmount    Float
-  taxableAmount  Float
-  cgst           Float
-  sgst           Float
-  igst           Float
-  paymentMethod  String
+  id Int @id @default(autoincrement())
+
+  /* Customer */
+  customerName   String?
+  customerMobile String?
   customerId     Int?
-  createdAt      DateTime @default(now())
-
-  items          BillItem[]
   customer       Customer? @relation(fields: [customerId], references: [id])
-}
 
+  /* Company snapshot */
+  companyName    String   @default("Billing Pro")
+  companyGstin   String?
+  companyAddress String?
+
+  /* GST */
+  gstType     GstType
+  gstPercent  Float
+  taxableAmount Float
+  cgst        Float
+  sgst        Float
+  igst        Float
+
+  /* Discounts & Total */
+  totalDiscount Float
+  roundOff      Float
+  totalAmount   Float
+
+  /* Payment */
+  paymentMethod PaymentMethod
+
+  notes String?
+
+  createdAt DateTime @default(now())
+
+  items BillItem[]
+}
 
 /* =======================
    BILL ITEM
 ======================= */
 model BillItem {
-  id        Int     @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   billId    Int
   productId Int
+
   quantity  Int
-  price     Float   // price at time of sale
+  price     Float
+
+  discount     Float
+  discountType DiscountType
+  gstPercent   Float
+  lineTotal    Float
 
   bill    Bill    @relation(fields: [billId], references: [id])
   product Product @relation(fields: [productId], references: [id])
@@ -97,10 +134,17 @@ model BillItem {
    CART ITEM
 ======================= */
 model CartItem {
-  id        Int      @id @default(autoincrement())
+  id        Int @id @default(autoincrement())
   userId    Int
   productId Int
+
   quantity  Int
+  price     Float
+
+  discount     Float
+  discountType DiscountType
+  gstPercent   Float
+
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id])
