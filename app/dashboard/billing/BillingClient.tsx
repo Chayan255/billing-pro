@@ -24,6 +24,8 @@ export default function BillingClient({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState("CASH");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
 
   /* =====================
      Load cart from DB
@@ -66,8 +68,9 @@ export default function BillingClient({
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.message);
-      return;
+      setError(data.message || "Failed to add item");
+return;
+
     }
 
     setCart(
@@ -81,6 +84,7 @@ export default function BillingClient({
   /* =====================
      Update quantity (DB)
   ===================== */
+  
   const updateQty = async (productId: number, qty: number) => {
     if (qty <= 0) return;
 
@@ -96,7 +100,9 @@ export default function BillingClient({
     const data = await res.json();
 
     if (!res.ok) {
-      alert(data.message);
+     setError(data.message || "Invalid quantity");
+return;
+
       return;
     }
 
@@ -207,6 +213,12 @@ export default function BillingClient({
       {/* RIGHT */}
       <div className={styles.summary}>
         <h3>Invoice Summary</h3>
+        {error && (
+  <div className={styles.error}>
+    {error}
+  </div>
+)}
+
 
         {cart.length === 0 && <p>No items</p>}
 
