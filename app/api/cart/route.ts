@@ -3,16 +3,20 @@ import { prisma } from "@/lib/db";
 import { getAuthUser } from "@/lib/get-auth-user";
 import { requireRole } from "@/lib/role-guard";
 
+/* ======================
+   ADD TO CART
+====================== */
 export async function POST(req: Request) {
   try {
     const user = await getAuthUser();
     requireRole(user.role, ["ADMIN", "STAFF"]);
 
-    const body = await req.json();
-    const productId = Number(body.productId);
-    const quantity = Number(body.quantity);
+    const { productId, quantity } = await req.json();
 
-    if (!productId || !quantity || quantity <= 0) {
+    const pid = Number(productId);
+    const qty = Number(quantity);
+
+    if (!pid || qty <= 0) {
       return NextResponse.json(
         { message: "Invalid input" },
         { status: 400 }
@@ -20,7 +24,7 @@ export async function POST(req: Request) {
     }
 
     const product = await prisma.product.findUnique({
-      where: { id: productId },
+      where: { id: pid },
     });
 
     if (!product) {
@@ -30,15 +34,14 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔎 existing cart item (DB)
     const existing = await prisma.cartItem.findFirst({
       where: {
         userId: user.userId,
-        productId,
+        productId: pid,
       },
     });
 
-    const totalQty = (existing?.quantity ?? 0) + quantity;
+    const totalQty = (existing?.quantity ?? 0) + qty;
 
     if (product.stock < totalQty) {
       return NextResponse.json(
@@ -56,24 +59,18 @@ export async function POST(req: Request) {
       await prisma.cartItem.create({
         data: {
           userId: user.userId,
-          productId,
-          quantity,
+          productId: pid,
+          quantity: qty,
         },
       });
     }
 
-    // ✅ cart with product details
     const cart = await prisma.cartItem.findMany({
       where: { userId: user.userId },
-      include: {
-        product: true,
-      },
+      include: { product: true },
     });
 
-    return NextResponse.json({
-      message: "Added to cart",
-      cart,
-    });
+    return NextResponse.json({ cart });
   } catch (error) {
     console.error("Add to cart error:", error);
     return NextResponse.json(
@@ -83,14 +80,15 @@ export async function POST(req: Request) {
   }
 }
 
+/* ======================
+   GET CART
+====================== */
 export async function GET() {
   const user = await getAuthUser();
 
   const cart = await prisma.cartItem.findMany({
     where: { userId: user.userId },
-    include: {
-      product: true,
-    },
+    include: { product: true },
   });
 
   return NextResponse.json({ cart });

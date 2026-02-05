@@ -13,6 +13,15 @@ enum Role {
   CASHIER
 }
 
+enum PaymentMethod {
+  CASH
+  UPI
+  CARD
+}
+
+/* =======================
+   USER
+======================= */
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -22,13 +31,22 @@ model User {
   createdAt DateTime @default(now())
 }
 
+/* =======================
+   CUSTOMER
+======================= */
 model Customer {
   id        Int      @id @default(autoincrement())
   name      String
   phone     String?
+  gstin     String?   // GST number (optional)
   createdAt DateTime @default(now())
+
+  bills Bill[]
 }
 
+/* =======================
+   PRODUCT
+======================= */
 model Product {
   id        Int      @id @default(autoincrement())
   name      String
@@ -39,26 +57,45 @@ model Product {
   createdAt DateTime @default(now())
 
   billItems BillItem[]
-  cartItems CartItem[] 
+  cartItems CartItem[]
 }
 
+/* =======================
+   BILL (GST READY)
+======================= */
 model Bill {
-  id          Int      @id @default(autoincrement())
-  totalAmount Float
-  createdAt   DateTime @default(now())
-  items       BillItem[]
+  id             Int      @id @default(autoincrement())
+  totalAmount    Float
+  taxableAmount  Float
+  cgst           Float
+  sgst           Float
+  igst           Float
+  paymentMethod  String
+  customerId     Int?
+  createdAt      DateTime @default(now())
+
+  items          BillItem[]
+  customer       Customer? @relation(fields: [customerId], references: [id])
 }
 
+
+/* =======================
+   BILL ITEM
+======================= */
 model BillItem {
   id        Int     @id @default(autoincrement())
   billId    Int
   productId Int
   quantity  Int
-  price     Float
+  price     Float   // price at time of sale
 
   bill    Bill    @relation(fields: [billId], references: [id])
   product Product @relation(fields: [productId], references: [id])
 }
+
+/* =======================
+   CART ITEM
+======================= */
 model CartItem {
   id        Int      @id @default(autoincrement())
   userId    Int

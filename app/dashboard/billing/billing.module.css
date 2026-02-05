@@ -1,0 +1,161 @@
+/* ===== Layout ===== */
+.layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  padding: 24px;
+  color: #111; /* 🔥 force dark text */
+}
+
+/* ===== LEFT: Products ===== */
+.products {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+}
+
+.products h2 {
+  margin-bottom: 12px;
+  font-size: 20px;
+  color: #111;
+}
+
+.search {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  color: #111;
+}
+
+.search::placeholder {
+  color: #6b7280;
+}
+
+.productList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.product {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  background: #fafafa;
+  transition: all 0.15s ease;
+  color: #111;
+}
+
+.product:hover {
+  background: #f3f4f6;
+  border-color: #111;
+}
+
+.product span {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.product small {
+  color: #6b7280;
+}
+
+/* ===== RIGHT: Summary ===== */
+.summary {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  color: #111;
+}
+
+.summary h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+  color: #111;
+}
+
+/* ===== Cart rows ===== */
+.cartRow {
+  display: grid;
+  grid-template-columns: 1fr 70px 80px 32px;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+  color: #111;
+}
+
+.cartRow input {
+  width: 60px;
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  color: #111;
+}
+
+.cartRow button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  color: #dc2626;
+}
+
+.cartRow button:hover {
+  transform: scale(1.1);
+}
+
+/* ===== Summary rows ===== */
+.row {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px 0;
+  color: #111;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  margin: 12px 0;
+  color: #111;
+}
+
+/* ===== Select ===== */
+.summary select {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111;
+}
+
+/* ===== Button ===== */
+.createBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  background: #111;
+  color: #ffffff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.createBtn:hover {
+  background: #000000;
+}
+
+.createBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}

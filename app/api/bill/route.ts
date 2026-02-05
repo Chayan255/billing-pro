@@ -15,7 +15,7 @@ export async function POST() {
   try {
     const bill = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-        // 1️⃣ Get cart items with product
+
         const cartItems: CartItemWithProduct[] =
           await tx.cartItem.findMany({
             where: { userId: user.userId },
@@ -26,7 +26,7 @@ export async function POST() {
           throw new Error("Cart is empty");
         }
 
-        // 2️⃣ Re-check stock
+        // Stock check
         for (const item of cartItems) {
           if (item.product.stock < item.quantity) {
             throw new Error(
@@ -35,19 +35,31 @@ export async function POST() {
           }
         }
 
-        // 3️⃣ Calculate total (TYPE SAFE)
-        const totalAmount = cartItems.reduce<number>(
+        // Amount calculation
+        const taxableAmount = cartItems.reduce<number>(
           (sum, item) =>
             sum + item.product.price * item.quantity,
           0
         );
 
-        // 4️⃣ Create Bill
+        const cgst = taxableAmount * 0.09;
+        const sgst = taxableAmount * 0.09;
+        const igst = 0;
+
+        const totalAmount = taxableAmount + cgst + sgst + igst;
+
+        // ✅ THIS IS WHERE RED LINE WAS
         const bill = await tx.bill.create({
-          data: { totalAmount },
+          data: {
+            taxableAmount,
+            cgst,
+            sgst,
+            igst,
+            totalAmount,
+            paymentMethod: "CASH",
+          },
         });
 
-        // 5️⃣ Create BillItems + decrement stock
         for (const item of cartItems) {
           await tx.billItem.create({
             data: {
@@ -66,7 +78,6 @@ export async function POST() {
           });
         }
 
-        // 6️⃣ Clear cart
         await tx.cartItem.deleteMany({
           where: { userId: user.userId },
         });
