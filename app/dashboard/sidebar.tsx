@@ -113,6 +113,16 @@ export default function Sidebar() {
         >
           📥 Stock Import (CSV)
         </Link>
+        <Link
+          href="/dashboard/products/manual-products-add"
+          className={`${styles.menuItem} ${
+            isActive("/dashboard/products/import")
+              ? styles.active
+              : ""
+          }`}
+        >
+          📥 Manual-Product-Add
+        </Link>
  <Link
           href="/dashboard/low-stock"
           className={`${styles.menuItem} ${

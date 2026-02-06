@@ -1,35 +1,31 @@
 import "server-only";
+import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/db";
+import type { Role, BusinessType, User } from "@prisma/client";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { verifyToken } from "@/lib/auth";
+type JwtPayload = {
+  userId: number;
+  role: Role;
+  businessType: BusinessType;
+  iat?: number;
+  exp?: number;
+};
 
-// Force Node runtime (good for crypto / jwt)
-export const runtime = "nodejs";
+export async function verifyToken(token: string): Promise<User | null> {
+  try {
+    const payload = jwt.verify(
+      token,
+      process.env.JWT_SECRET!
+    ) as JwtPayload;
 
-export async function getAuthUser() {
-  // ✅ Next 15 / 16: cookies() is async
-  const cookieStore = await cookies();
+    if (!payload?.userId) return null;
 
-  const rawToken = cookieStore.get("token")?.value;
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
 
-  // ❌ No token → block
-  if (!rawToken) {
-    redirect("/login");
+    return user;
+  } catch (err) {
+    return null;
   }
-
-  // ✅ Strip Bearer prefix if present
-  const token = rawToken.startsWith("Bearer ")
-    ? rawToken.slice(7)
-    : rawToken;
-
-  // ⚠️ verifyToken MUST be server-safe
-  const user = await verifyToken(token);
-
-  // ❌ Invalid / expired token → block
-  if (!user) {
-    redirect("/login");
-  }
-
-  return user;
 }

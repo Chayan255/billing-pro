@@ -4,12 +4,19 @@ import { useEffect, useState } from "react";
 
 type Log = {
   id: number;
-  product: { name: string };
   change: number;
   type: string;
   reason: string | null;
   createdAt: string;
-  user: { name: string; role: string };
+
+  product?: {
+    name?: string;
+  } | null;
+
+  user?: {
+    name?: string;
+    role?: string;
+  } | null;
 };
 
 export default function StockHistoryPage() {
@@ -32,72 +39,35 @@ export default function StockHistoryPage() {
     );
     const data = await res.json();
 
-    setLogs(data.data || []);
+    setLogs(Array.isArray(data.data) ? data.data : []);
     setLoading(false);
   };
 
-  // auto load on filter change
   useEffect(() => {
     load();
   }, [type, from, to]);
-
-  const exportCSV = () => {
-    const params = new URLSearchParams();
-    if (type) params.append("type", type);
-    if (from) params.append("from", from);
-    if (to) params.append("to", to);
-
-    window.open(
-      `/api/products/stock/history/export?${params.toString()}`,
-      "_blank"
-    );
-  };
 
   return (
     <div style={{ padding: 30 }}>
       <h1>📊 Stock History</h1>
 
-      {/* Filters */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          marginBottom: 20,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All Types</option>
+          <option value="">All</option>
           <option value="MANUAL">Manual</option>
           <option value="PURCHASE">Purchase</option>
           <option value="BILL">Bill</option>
           <option value="IMPORT">Import</option>
         </select>
 
-        <input
-          type="date"
-          value={from}
-          onChange={(e) => setFrom(e.target.value)}
-        />
-
-        <input
-          type="date"
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-        />
-
-        <button onClick={exportCSV}>⬇ Export CSV</button>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
-      {/* States */}
-      {loading && <p>Loading history...</p>}
+      {loading && <p>Loading...</p>}
 
-      {!loading && logs.length === 0 && (
-        <p style={{ opacity: 0.7 }}>No stock history found</p>
-      )}
+      {!loading && logs.length === 0 && <p>No history found</p>}
 
-      {/* Table */}
       {!loading && logs.length > 0 && (
         <table border={1} cellPadding={8} width="100%">
           <thead>
@@ -114,19 +84,24 @@ export default function StockHistoryPage() {
             {logs.map((l) => (
               <tr key={l.id}>
                 <td>{new Date(l.createdAt).toLocaleString()}</td>
-                <td>{l.product.name}</td>
-                <td
-                  style={{
-                    color: l.change > 0 ? "green" : "red",
-                    fontWeight: "bold",
-                  }}
-                >
+
+                <td>
+                  {l.product?.name
+                    ? l.product.name
+                    : <span style={{ color: "#999" }}>—</span>}
+                </td>
+
+                <td style={{ color: l.change > 0 ? "green" : "red" }}>
                   {l.change > 0 ? `+${l.change}` : l.change}
                 </td>
+
                 <td>{l.type}</td>
                 <td>{l.reason || "-"}</td>
+
                 <td>
-                  {l.user.name} ({l.user.role})
+                  {l.user?.name
+                    ? `${l.user.name} (${l.user.role ?? ""})`
+                    : "—"}
                 </td>
               </tr>
             ))}

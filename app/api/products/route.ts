@@ -1,55 +1,40 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
-import { requireRole } from "@/lib/role-guard";
 
-/* =======================
+import { requireRole } from "@/lib/role-guard";
+import { getAuthUser } from "@/lib/auth";
+
+/* ======================
    GET: Product List
-======================= */
+====================== */
 export async function GET(req: Request) {
   try {
     const user = await getAuthUser();
     requireRole(user.role, ["ADMIN", "STAFF"]);
 
     const { searchParams } = new URL(req.url);
-
-    const page = Number(searchParams.get("page") ?? 1);
-    const limit = Number(searchParams.get("limit") ?? 10);
     const search = searchParams.get("search") ?? "";
 
-    const skip = (page - 1) * limit;
+    const where = {
+      ownerId: user.id,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { sku: { contains: search } },
+              { category: { contains: search } },
+            ],
+          }
+        : {}),
+    };
 
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search } },
-            { sku: { contains: search } },
-            { category: { contains: search } },
-          ],
-        }
-      : {};
-
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.product.count({ where }),
-    ]);
-
-    return NextResponse.json({
-      data: products,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+    const products = await prisma.product.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
     });
-  } catch (error) {
-    console.error("Product list error:", error);
+
+    return NextResponse.json({ data: products });
+  } catch (e) {
     return NextResponse.json(
       { message: "Failed to fetch products" },
       { status: 500 }
@@ -57,39 +42,51 @@ export async function GET(req: Request) {
   }
 }
 
-/* =======================
-   POST: Add Product
-======================= */
+/* ======================
+   POST: Create Product
+====================== */
 export async function POST(req: Request) {
   try {
     const user = await getAuthUser();
-    requireRole(user.role, ["ADMIN"]); // only ADMIN can add product
+    requireRole(user.role, ["ADMIN"]);
 
     const body = await req.json();
-    const { name, sku, price, stock, category } = body;
+    const {
+      name,
+      sku,
+      price,
+      stock,
+      category,
+      hsnCode,
+      lowStockLevel,
+    } = body;
 
     if (!name || !sku || !price || !stock || !category) {
       return NextResponse.json(
-        { message: "All fields are required" },
+        { message: "All required fields missing" },
         { status: 400 }
       );
     }
 
     const product = await prisma.product.create({
       data: {
+        ownerId: user.id, // 🔒 CRITICAL
         name,
         sku,
         price: Number(price),
         stock: Number(stock),
         category,
+        hsnCode: hsnCode || null,
+        lowStockLevel: lowStockLevel
+          ? Number(lowStockLevel)
+          : 5,
       },
     });
 
     return NextResponse.json(product, { status: 201 });
-  } catch (error) {
-    console.error("Product create error:", error);
+  } catch (e: any) {
     return NextResponse.json(
-      { message: "Failed to create product" },
+      { message: e.message ?? "Create failed" },
       { status: 500 }
     );
   }

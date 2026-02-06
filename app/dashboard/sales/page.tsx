@@ -1,5 +1,6 @@
 
-import { getAuthUser } from "@/lib/get-auth-user";
+
+import { getAuthUser } from "@/lib/auth";
 import { requireRole } from "@/lib/role-guard";
 
 export default async function SalesPage() {

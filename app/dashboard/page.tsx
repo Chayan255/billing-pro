@@ -1,7 +1,12 @@
 import { prisma } from "@/lib/db";
+
 import styles from "./dashboard.module.css";
+import { getAuthUser } from "@/lib/auth";
 
 export default async function DashboardHome() {
+  const user = await getAuthUser();
+
+  // 🕒 Today range
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
@@ -15,22 +20,41 @@ export default async function DashboardHome() {
     lowStockCount,
     recentInvoices,
   ] = await Promise.all([
+    // ✅ Today sales (OWNER SAFE)
     prisma.bill.aggregate({
       _sum: { totalAmount: true },
       where: {
-        createdAt: { gte: startOfToday, lte: endOfToday },
+        ownerId: user.id,
+        createdAt: {
+          gte: startOfToday,
+          lte: endOfToday,
+        },
       },
     }),
 
-    prisma.bill.count(),
-
-    prisma.product.count(),
-
-    prisma.product.count({
-      where: { stock: { lt: 5 } },
+    // ✅ Total invoices (OWNER SAFE)
+    prisma.bill.count({
+      where: { ownerId: user.id },
     }),
 
+    // ✅ Total products (OWNER SAFE)
+    prisma.product.count({
+      where: { ownerId: user.id },
+    }),
+
+    // ✅ Low stock (compare stock vs lowStockLevel)
+    prisma.product.count({
+      where: {
+        ownerId: user.id,
+        stock: {
+          lte: prisma.product.fields.lowStockLevel,
+        },
+      },
+    }),
+
+    // ✅ Recent invoices (OWNER SAFE)
     prisma.bill.findMany({
+      where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
@@ -46,24 +70,40 @@ export default async function DashboardHome() {
             todaySales._sum.totalAmount?.toFixed(2) ?? "0.00"
           }`}
         />
-        <Metric label="Total Invoices" value={totalInvoices} />
-        <Metric label="Products" value={totalProducts} />
-        <Metric label="Low Stock Items" value={lowStockCount} danger />
+        <Metric
+          label="Total Invoices"
+          value={totalInvoices}
+        />
+        <Metric
+          label="Products"
+          value={totalProducts}
+        />
+        <Metric
+          label="Low Stock Items"
+          value={lowStockCount}
+          danger
+        />
       </div>
 
       {/* RECENT INVOICES */}
       <div className={styles.section}>
-        <h2 className={styles.sectionTitle}>🧾 Recent Invoices</h2>
+        <h2 className={styles.sectionTitle}>
+          🧾 Recent Invoices
+        </h2>
 
         {recentInvoices.length === 0 ? (
-          <div className={styles.empty}>No invoices yet</div>
+          <div className={styles.empty}>
+            No invoices yet
+          </div>
         ) : (
           <table className={styles.table}>
             <thead>
               <tr>
                 <th>ID</th>
                 <th>Date</th>
-                <th className={styles.right}>Total</th>
+                <th className={styles.right}>
+                  Total
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -71,7 +111,9 @@ export default async function DashboardHome() {
                 <tr key={bill.id}>
                   <td>#{bill.id}</td>
                   <td>
-                    {new Date(bill.createdAt).toLocaleDateString()}
+                    {new Date(
+                      bill.createdAt
+                    ).toLocaleDateString()}
                   </td>
                   <td className={styles.right}>
                     ₹ {bill.totalAmount.toFixed(2)}
@@ -101,8 +143,12 @@ function Metric({
         danger ? styles.danger : ""
       }`}
     >
-      <span className={styles.cardLabel}>{label}</span>
-      <span className={styles.cardValue}>{value}</span>
+      <span className={styles.cardLabel}>
+        {label}
+      </span>
+      <span className={styles.cardValue}>
+        {value}
+      </span>
     </div>
   );
 }

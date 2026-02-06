@@ -2,21 +2,32 @@ import styles from "./invoice.module.css";
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import InvoicePrintButton from "./print-button";
+import { getAuthUser } from "@/lib/auth";
+import { requireRole } from "@/lib/role-guard";
 
 export default async function InvoicePage({
   params,
 }: {
   params: Promise<{ billId: string }>;
 }) {
+  const user = await getAuthUser();
+  requireRole(user.role, ["ADMIN", "STAFF"]);
+
   const { billId } = await params;
   const id = Number(billId);
   if (!id) notFound();
 
-  const bill = await prisma.bill.findUnique({
-    where: { id },
+  /* 🔒 OWNER SAFE LOAD */
+  const bill = await prisma.bill.findFirst({
+    where: {
+      id,
+      ownerId: user.id,
+    },
     include: {
       items: {
-        include: { product: true },
+        include: {
+          product: true,
+        },
       },
     },
   });
@@ -37,8 +48,7 @@ export default async function InvoicePage({
             </p>
             {bill.companyGstin && (
               <p className={styles.muted}>
-                <strong>GSTIN:</strong>{" "}
-                {bill.companyGstin}
+                <strong>GSTIN:</strong> {bill.companyGstin}
               </p>
             )}
           </div>
@@ -52,8 +62,7 @@ export default async function InvoicePage({
               {new Date(bill.createdAt).toLocaleDateString()}
             </div>
             <div>
-              <strong>Payment:</strong>{" "}
-              {bill.paymentMethod}
+              <strong>Payment:</strong> {bill.paymentMethod}
             </div>
           </div>
         </header>
@@ -89,43 +98,30 @@ export default async function InvoicePage({
 
           <tbody>
             {bill.items.map((item, idx) => {
-              const base =
-                item.price * item.quantity;
+              const base = item.price * item.quantity;
 
               const discountLabel =
                 item.discountType === "PERCENT"
                   ? `${item.discount}% (₹${(
-                      (base * item.discount) /
-                      100
+                      (base * item.discount) / 100
                     ).toFixed(2)})`
                   : `₹${item.discount.toFixed(2)}`;
 
               return (
                 <tr key={item.id}>
                   <td>{idx + 1}</td>
-
                   <td>{item.product.name}</td>
-
-                  <td>
-                    {item.product.hsnCode || "-"}
-                  </td>
-
-                  <td className={styles.right}>
-                    {item.quantity}
-                  </td>
-
+                  <td>{item.product.hsnCode || "-"}</td>
+                  <td className={styles.right}>{item.quantity}</td>
                   <td className={styles.right}>
                     ₹{item.price.toFixed(2)}
                   </td>
-
                   <td className={styles.right}>
                     {discountLabel}
                   </td>
-
                   <td className={styles.right}>
                     {item.gstPercent}%
                   </td>
-
                   <td className={styles.right}>
                     ₹{item.lineTotal.toFixed(2)}
                   </td>
@@ -139,16 +135,12 @@ export default async function InvoicePage({
         <div className={styles.totals}>
           <div>
             <span>Total Discount</span>
-            <span>
-              ₹{bill.totalDiscount.toFixed(2)}
-            </span>
+            <span>₹{bill.totalDiscount.toFixed(2)}</span>
           </div>
 
           <div>
             <span>Taxable Amount</span>
-            <span>
-              ₹{bill.taxableAmount.toFixed(2)}
-            </span>
+            <span>₹{bill.taxableAmount.toFixed(2)}</span>
           </div>
 
           <div>
@@ -163,17 +155,15 @@ export default async function InvoicePage({
 
           <div className={styles.grandTotal}>
             <strong>Grand Total</strong>
-            <strong>
-              ₹{bill.totalAmount.toFixed(2)}
-            </strong>
+            <strong>₹{bill.totalAmount.toFixed(2)}</strong>
           </div>
         </div>
 
         {/* ================= FOOTER ================= */}
         <footer className={styles.footer}>
           <p className={styles.declaration}>
-            <strong>Declaration:</strong> We declare that
-            this invoice shows the actual price of the goods
+            <strong>Declaration:</strong> We declare that this
+            invoice shows the actual price of the goods
             described and that all particulars are true and
             correct.
           </p>

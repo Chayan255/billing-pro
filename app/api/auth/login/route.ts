@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { signToken, verifyPassword } from "@/lib/auth";
-import { cookies } from "next/headers";
+import { signToken } from "@/lib/jwt";
+import { verifyPassword } from "@/lib/password";
 
-// 🔒 Node runtime (jsonwebtoken safe)
+
 export const runtime = "nodejs";
+
+const COOKIE_NAME = "token";
 
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
-    // 1️⃣ Validation
     if (!email || !password) {
       return NextResponse.json(
         { message: "Email and password required" },
@@ -18,7 +19,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2️⃣ Find user
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -30,7 +30,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3️⃣ Verify password
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
       return NextResponse.json(
@@ -39,24 +38,31 @@ export async function POST(req: Request) {
       );
     }
 
-    // 4️⃣ Sign JWT
+    // Optional verification gate
+    // if (!user.isVerified) {
+    //   return NextResponse.json(
+    //     { message: "Account not verified" },
+    //     { status: 403 }
+    //   );
+    // }
+
     const token = signToken({
       userId: user.id,
       role: user.role,
+      businessType: user.businessType,
     });
 
-    // 5️⃣ Set cookie (IMPORTANT FIX)
     const response = NextResponse.json({
       success: true,
-      role: user.role, // frontend redirect use
+      role: user.role,
     });
 
-    response.cookies.set("token", token, {
+    response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24,
     });
 
     return response;

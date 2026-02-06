@@ -2,38 +2,37 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import styles from "./register.module.css";
 
 export default function RegisterPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("ADMIN");
-
-  const [loading, setLoading] = useState(false);
+  const [businessType, setBusinessType] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const submit = async () => {
-    setError(null);
-    setSuccess(null);
-
-    if (!name || !email || !password) {
+    if (!name || !businessName || !email || !password || !businessType) {
       setError("All fields are required");
       return;
     }
 
     setLoading(true);
+    setError(null);
 
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        businessName,
         email,
         password,
-        role,
+        businessType,
       }),
     });
 
@@ -45,121 +44,59 @@ export default function RegisterPage() {
       return;
     }
 
-    setSuccess("Account created successfully. Please login.");
-    setTimeout(() => router.push("/login"), 1500);
+    router.push("/login");
   };
 
   return (
-    <div style={styles.wrapper}>
-      <div style={styles.card}>
-        <h1 style={styles.title}>Create Account</h1>
-        <p style={styles.subtitle}>
-          Register your store admin account
+    <div className={styles.wrapper}>
+      <div className={styles.card}>
+        <h1 className={styles.title}>Create your account</h1>
+        <p className={styles.subTitle}>
+          Start managing your business professionally
         </p>
 
-        <input
-          style={styles.input}
-          placeholder="Full name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        {error && <div className={styles.errorBox}>{error}</div>}
 
-        <input
-          style={styles.input}
-          placeholder="Email address"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className={styles.field}>
+          <label>Owner Name</label>
+          <input value={name} onChange={e => setName(e.target.value)} />
+        </div>
 
-        <input
-          style={styles.input}
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className={styles.field}>
+          <label>Business Name</label>
+          <input value={businessName} onChange={e => setBusinessName(e.target.value)} />
+        </div>
 
-        <select
-          style={styles.input}
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          <option value="ADMIN">Admin (Store Owner)</option>
-          <option value="STAFF">Staff</option>
-          <option value="CASHIER">Cashier</option>
-        </select>
+        <div className={styles.field}>
+          <label>Email Address</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+        </div>
 
-        {error && <div style={styles.error}>{error}</div>}
-        {success && <div style={styles.success}>{success}</div>}
+        <div className={styles.field}>
+          <label>Password</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
 
-        <button
-          style={styles.button}
-          onClick={submit}
-          disabled={loading}
-        >
-          {loading ? "Creating..." : "Register"}
+        <div className={styles.field}>
+          <label>Business Type</label>
+          <select value={businessType} onChange={e => setBusinessType(e.target.value)}>
+            <option value="">Select business type</option>
+            <option value="MEDICINE">Medicine</option>
+            <option value="GROCERY">Grocery</option>
+            <option value="SHOPPING_MALL">Shopping Mall</option>
+            <option value="GARMENTS">Garments</option>
+          </select>
+        </div>
+
+        <button className={styles.button} onClick={submit} disabled={loading}>
+          {loading ? "Creating account..." : "Create Account"}
         </button>
+
+        <p className={styles.footerText}>
+          Already have an account?{" "}
+          <span onClick={() => router.push("/login")}>Login</span>
+        </p>
       </div>
     </div>
   );
 }
-
-const styles: any = {
-  wrapper: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#f4f6f8",
-  },
-  card: {
-    width: 380,
-    background: "#fff",
-    padding: 30,
-    borderRadius: 8,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-  },
-  title: {
-    marginBottom: 4,
-    fontSize: 22,
-  },
-  subtitle: {
-    marginBottom: 20,
-    color: "#666",
-    fontSize: 14,
-  },
-  input: {
-    width: "100%",
-    padding: "10px 12px",
-    marginBottom: 12,
-    borderRadius: 6,
-    border: "1px solid #ccc",
-    fontSize: 14,
-  },
-  button: {
-    width: "100%",
-    padding: "10px",
-    borderRadius: 6,
-    border: "none",
-    background: "#111",
-    color: "#fff",
-    fontSize: 15,
-    cursor: "pointer",
-  },
-  error: {
-    background: "#ffe6e6",
-    color: "#c00",
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 10,
-    fontSize: 13,
-  },
-  success: {
-    background: "#e6ffea",
-    color: "#0a7a2f",
-    padding: 8,
-    borderRadius: 6,
-    marginBottom: 10,
-    fontSize: 13,
-  },
-};

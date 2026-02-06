@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
+
 import { requireRole } from "@/lib/role-guard";
+import { getAuthUser } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -28,8 +29,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    /* ======================
+       LOAD PRODUCT (OWNER SAFE)
+    ====================== */
+    const product = await prisma.product.findFirst({
+      where: {
+        id: productId,
+        ownerId: user.id,
+      },
     });
 
     if (!product) {
@@ -39,9 +46,12 @@ export async function POST(req: Request) {
       );
     }
 
+    /* ======================
+       LOAD CART ITEM (OWNER SAFE)
+    ====================== */
     const existing = await prisma.cartItem.findFirst({
       where: {
-        userId: user.userId,
+        ownerId: user.id,
         productId,
       },
     });
@@ -56,7 +66,7 @@ export async function POST(req: Request) {
     }
 
     /* ======================
-       CREATE
+       CREATE ITEM
     ====================== */
     if (!existing && quantity !== undefined && quantity > 0) {
       if (quantity > product.stock) {
@@ -68,7 +78,7 @@ export async function POST(req: Request) {
 
       await prisma.cartItem.create({
         data: {
-          userId: user.userId,
+          ownerId: user.id,
           productId,
           quantity,
           price: product.price,
@@ -80,12 +90,11 @@ export async function POST(req: Request) {
     }
 
     /* ======================
-       UPDATE
+       UPDATE ITEM
     ====================== */
     if (existing) {
       const updateData: any = {};
 
-      // ✅ qty only if provided
       if (quantity !== undefined && quantity > 0) {
         if (quantity > product.stock) {
           return NextResponse.json(
@@ -96,7 +105,6 @@ export async function POST(req: Request) {
         updateData.quantity = quantity;
       }
 
-      // ✅ discount only if provided
       if (discount !== undefined) {
         updateData.discount = discount;
       }
@@ -109,9 +117,16 @@ export async function POST(req: Request) {
       }
     }
 
+    /* ======================
+       RETURN UPDATED CART
+    ====================== */
     const cart = await prisma.cartItem.findMany({
-      where: { userId: user.userId },
-      include: { product: true },
+      where: {
+        ownerId: user.id,
+      },
+      include: {
+        product: true,
+      },
     });
 
     return NextResponse.json({ cart });
@@ -124,12 +139,19 @@ export async function POST(req: Request) {
   }
 }
 
+/* ======================
+   GET CART (OWNER SAFE)
+====================== */
 export async function GET() {
   const user = await getAuthUser();
 
   const cart = await prisma.cartItem.findMany({
-    where: { userId: user.userId },
-    include: { product: true },
+    where: {
+      ownerId: user.id,
+    },
+    include: {
+      product: true,
+    },
   });
 
   return NextResponse.json({ cart });

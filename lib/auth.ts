@@ -1,48 +1,38 @@
 import "server-only";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
+import { verifyToken } from "@/lib/jwt";
 
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+export const runtime = "nodejs";
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+export async function getAuthUser() {
+  // ✅ Next 15/16: cookies() is async
+  const cookieStore = await cookies();
+  const rawToken = cookieStore.get("token")?.value;
 
-/**
- * Hash password (server only)
- */
-export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10);
-}
-
-/**
- * Verify password (server only)
- */
-export async function verifyPassword(password: string, hash: string) {
-  return bcrypt.compare(password, hash);
-}
-
-/**
- * Sign JWT (server only)
- */
-export function signToken(payload: { userId: number; role: string }) {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: "1d",
-  });
-}
-
-/**
- * Verify JWT (server only)
- */
-export function verifyToken(token: string) {
-  if (!token || token.split(".").length !== 3) {
-    return null;
+  if (!rawToken) {
+    redirect("/login");
   }
 
+  const token = rawToken.startsWith("Bearer ")
+    ? rawToken.slice(7)
+    : rawToken;
+
+  let payload;
   try {
-    return jwt.verify(token, JWT_SECRET) as {
-      userId: number;
-      role: string;
-    };
-  } catch (error) {
-    console.error("JWT Error:", error);
-    return null;
+    payload = verifyToken(token);
+  } catch {
+    redirect("/login");
   }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+  });
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return user; // ✅ fully typed Prisma User
 }

@@ -1,10 +1,10 @@
-import { redirect } from "next/navigation";
+import { Role } from "@prisma/client";
 
 export function requireRole(
-  role: string,
-  allowed: Array<"ADMIN" | "STAFF" | "CASHIER">
+  role: Role,
+  allowed: Role[]
 ) {
-  if (!allowed.includes(role as any)) {
-    redirect("/dashboard"); // বা 403 page
+  if (!allowed.includes(role)) {
+    throw new Error("Unauthorized");
   }
 }

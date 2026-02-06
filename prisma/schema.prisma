@@ -7,15 +7,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/**
- * =======================
- * ENUMS
- * =======================
- */
+/* =======================
+   ENUMS
+======================= */
 enum Role {
   ADMIN
   STAFF
   CASHIER
+}
+
+enum BusinessType {
+  MEDICINE
+  GROCERY
+  SHOPPING_MALL
+  GARMENTS
 }
 
 enum PaymentMethod {
@@ -41,90 +46,97 @@ enum StockType {
   IMPORT
 }
 
-/**
- * =======================
- * USER
- * =======================
- */
+/* =======================
+   USER (BUSINESS OWNER)
+======================= */
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  password  String
-  role      Role
-  createdAt DateTime @default(now())
+  id            Int          @id @default(autoincrement())
+  name          String
+  email         String       @unique
+  password      String
+  role          Role
+  businessType  BusinessType
+  businessName  String
+  isVerified    Boolean      @default(false)
+  createdAt     DateTime     @default(now())
 
-  // relations
-  stockLogs StockLog[]
-  purchases Purchase[]
+  products   Product[]
+  customers  Customer[]
+  bills      Bill[]
+  purchases  Purchase[]
+  stockLogs  StockLog[]
+  cartItems  CartItem[]
 }
 
-/**
- * =======================
- * CUSTOMER
- * =======================
- */
+/* =======================
+   CUSTOMER
+======================= */
 model Customer {
-  id        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
+
   name      String
   phone     String?
   gstin     String?
   createdAt DateTime @default(now())
 
   bills Bill[]
+
+  @@index([ownerId])
 }
 
-/**
- * =======================
- * PRODUCT
- * =======================
- */
+/* =======================
+   PRODUCT
+======================= */
 model Product {
-  id        Int      @id @default(autoincrement())
-  name      String
-  sku       String   @unique
-  price     Float
-  stock     Int
-  category  String
-  hsnCode        String? 
-   lowStockLevel  Int      @default(5) 
-  createdAt DateTime @default(now())
+  id Int @id @default(autoincrement())
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
+
+  name          String
+  sku           String
+  price         Float
+  stock         Int
+  category      String
+  hsnCode       String?
+  lowStockLevel Int      @default(5)
+  createdAt     DateTime @default(now())
 
   billItems BillItem[]
   cartItems CartItem[]
   stockLogs StockLog[]
   purchases Purchase[]
+
+  @@unique([ownerId, sku]) // 🔒 SKU unique per business
+  @@index([ownerId])
 }
 
-/**
- * =======================
- * BILL
- * =======================
- */
+/* =======================
+   BILL
+======================= */
 model Bill {
   id Int @id @default(autoincrement())
 
-  /* ======================
-     CUSTOMER SNAPSHOT
-  ====================== */
-  customerName   String?
-  customerMobile String?
-  customerGstin  String?        // ✅ NEW
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
+
+  /* 🔒 COMPANY SNAPSHOT */
+  companyName      String
+  companyGstin     String?
+  companyAddress   String?
+  companyState     String?
+  companyStateCode String?
+
   customerId     Int?
   customer       Customer? @relation(fields: [customerId], references: [id])
 
-  /* ======================
-     COMPANY SNAPSHOT
-  ====================== */
-  companyName       String  @default("Billing Pro")
-  companyGstin      String?
-  companyAddress    String?
-  companyState      String?     // ✅ NEW
-  companyStateCode  String?     // ✅ NEW
+  customerName   String?
+  customerMobile String?
+  customerGstin  String?
 
-  /* ======================
-     GST
-  ====================== */
   gstType       GstType
   gstPercent    Float
   taxableAmount Float
@@ -132,31 +144,26 @@ model Bill {
   sgst          Float
   igst          Float
 
-  /* ======================
-     TOTALS
-  ====================== */
   totalDiscount Float
-  roundOff      Float          // ✅ already used in code
+  roundOff      Float
   totalAmount   Float
 
-  /* ======================
-     PAYMENT
-  ====================== */
   paymentMethod PaymentMethod
   notes         String?
 
   createdAt DateTime @default(now())
 
   items BillItem[]
+
+  @@index([ownerId])
 }
 
-/**
- * =======================
- * BILL ITEM
- * =======================
- */
+/* =======================
+   BILL ITEM
+======================= */
 model BillItem {
-  id        Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
+
   billId    Int
   productId Int
 
@@ -172,15 +179,17 @@ model BillItem {
   product Product @relation(fields: [productId], references: [id])
 }
 
-/**
- * =======================
- * CART ITEM
- * =======================
- */
+/* =======================
+   CART ITEM
+======================= */
 model CartItem {
-  id        Int @id @default(autoincrement())
-  userId    Int
+  id Int @id @default(autoincrement())
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
+
   productId Int
+  product   Product @relation(fields: [productId], references: [id])
 
   quantity Int
   price    Float
@@ -191,16 +200,18 @@ model CartItem {
 
   createdAt DateTime @default(now())
 
-  product Product @relation(fields: [productId], references: [id])
+  @@index([ownerId])
+  @@index([productId])
 }
 
-/**
- * =======================
- * STOCK LOG (AUDIT)
- * =======================
- */
+/* =======================
+   STOCK LOG (AUDIT)
+======================= */
 model StockLog {
   id Int @id @default(autoincrement())
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
 
   productId Int
   product   Product @relation(fields: [productId], references: [id])
@@ -209,24 +220,21 @@ model StockLog {
   type   StockType
   reason String? @db.VarChar(255)
 
-  createdBy Int
-  user      User @relation(fields: [createdBy], references: [id])
-
   createdAt DateTime @default(now())
 
+  @@index([ownerId])
   @@index([productId])
-  @@index([createdAt])
-
-  @@map("stocklog") 
+  @@map("stocklog")
 }
 
-/**
- * =======================
- * PURCHASE
- * =======================
- */
+/* =======================
+   PURCHASE
+======================= */
 model Purchase {
   id Int @id @default(autoincrement())
+
+  ownerId Int
+  owner   User @relation(fields: [ownerId], references: [id])
 
   productId Int
   product   Product @relation(fields: [productId], references: [id])
@@ -235,13 +243,9 @@ model Purchase {
   quantity  Int
   costPrice Float?
 
-  createdBy Int
-  user      User @relation(fields: [createdBy], references: [id])
-
   createdAt DateTime @default(now())
 
+  @@index([ownerId])
   @@index([productId])
-  @@index([createdAt])
-
-   @@map("purchase")
+  @@map("purchase")
 }

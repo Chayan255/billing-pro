@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
 import { requireRole } from "@/lib/role-guard";
 import type { Prisma } from "@prisma/client";
+import { getAuthUser } from "@/lib/auth";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
@@ -16,9 +16,19 @@ export async function POST(req: Request) {
   try {
     const bill = await prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
+        /* ======================
+           LOAD CART (OWNER SAFE)
+        ====================== */
         const cartItems = await tx.cartItem.findMany({
-          where: { userId: user.userId },
-          include: { product: true },
+          where: {
+            ownerId: user.id,              // ✅ FIXED
+            product: {
+              ownerId: user.id,            // ✅ FIXED
+            },
+          },
+          include: {
+            product: true,
+          },
         });
 
         if (cartItems.length === 0) {
@@ -36,62 +46,62 @@ export async function POST(req: Request) {
           }
         }
 
-       /* ======================
-   CALCULATIONS
-====================== */
-let taxableAmount = 0;
-let totalDiscount = 0;
+        /* ======================
+           CALCULATIONS
+        ====================== */
+        let taxableAmount = 0;
+        let totalDiscount = 0;
 
-const gstPercent =
-  typeof body.gstPercent === "number"
-    ? body.gstPercent
-    : 18;
+        const gstPercent =
+          typeof body.gstPercent === "number"
+            ? body.gstPercent
+            : 18;
 
-const roundOff =
-  typeof body.roundOff === "number"
-    ? body.roundOff
-    : 0;
+        const roundOff =
+          typeof body.roundOff === "number"
+            ? body.roundOff
+            : 0;
 
-for (const item of cartItems) {
-  const base = item.price * item.quantity;
+        for (const item of cartItems) {
+          const base = item.price * item.quantity;
 
-  const discount =
-    item.discountType === "PERCENT"
-      ? (base * item.discount) / 100
-      : item.discount;
+          const discount =
+            item.discountType === "PERCENT"
+              ? (base * item.discount) / 100
+              : item.discount;
 
-  const lineTaxable = base - discount;
+          const lineTaxable = base - discount;
 
-  taxableAmount += lineTaxable;
-  totalDiscount += discount;
-}
+          taxableAmount += lineTaxable;
+          totalDiscount += discount;
+        }
 
-const cgst = taxableAmount * (gstPercent / 2 / 100);
-const sgst = taxableAmount * (gstPercent / 2 / 100);
-const igst = 0;
+        const cgst = taxableAmount * (gstPercent / 2 / 100);
+        const sgst = taxableAmount * (gstPercent / 2 / 100);
+        const igst = 0;
 
-const totalAmount =
-  taxableAmount + cgst + sgst + roundOff;
+        const totalAmount =
+          taxableAmount + cgst + sgst + roundOff;
 
         /* ======================
-           CREATE BILL
+           CREATE BILL (OWNER SAFE)
+           ⚠️ company fields REMOVED
         ====================== */
-      const bill = await tx.bill.create({
+       const bill = await tx.bill.create({
   data: {
-    /* CUSTOMER */
+    ownerId: user.id,
+
+    // ✅ REQUIRED COMPANY FIELDS
+    companyName: user.businessName,
+    companyGstin: body.companyGstin || null,
+    companyAddress: body.companyAddress || null,
+    companyState: body.companyState || null,
+    companyStateCode: body.companyStateCode || null,
+
     customerName: body.customerName || "Walk-in Customer",
     customerMobile: body.customerMobile || null,
     customerGstin: body.customerGstin || null,
 
-    /* SELLER (STATIC / SETTINGS) */
-    companyName: "Billing Pro Pvt Ltd",
-    companyGstin: "22AAAAA0000A1Z5",
-    companyAddress:
-      "1st Floor, Business Park, Kolkata, West Bengal - 700001",
-    companyState: "West Bengal",
-    companyStateCode: "19",
-
-    /* GST */
     gstType: "CGST_SGST",
     gstPercent,
     taxableAmount,
@@ -99,74 +109,74 @@ const totalAmount =
     sgst,
     igst,
 
-    /* TOTALS */
     totalDiscount,
     roundOff,
     totalAmount,
 
-    /* PAYMENT */
     paymentMethod: body.paymentMethod || "CASH",
-
-    /* META */
     notes: body.notes || null,
   },
 });
 
-       /* ======================
-   BILL ITEMS + STOCK
-====================== */
-for (const item of cartItems) {
-  const base = item.price * item.quantity;
+        /* ======================
+           BILL ITEMS + STOCK
+        ====================== */
+        for (const item of cartItems) {
+          const base = item.price * item.quantity;
 
-  const discount =
-    item.discountType === "PERCENT"
-      ? (base * item.discount) / 100
-      : item.discount;
+          const discount =
+            item.discountType === "PERCENT"
+              ? (base * item.discount) / 100
+              : item.discount;
 
-  const lineTotal = base - discount;
+          const lineTotal = base - discount;
 
-  // 1️⃣ Bill item create
-  await tx.billItem.create({
-    data: {
-      billId: bill.id,
-      productId: item.productId,
-      quantity: item.quantity,
-      price: item.price,
+          // 1️⃣ Bill item
+          await tx.billItem.create({
+            data: {
+              billId: bill.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price,
+              discount: item.discount,
+              discountType: item.discountType,
+              gstPercent: item.gstPercent,
+              lineTotal,
+            },
+          });
 
-      discount: item.discount,
-      discountType: item.discountType,
-      gstPercent: item.gstPercent,
-      lineTotal,
-    },
-  });
+          // 2️⃣ Stock decrement (OWNER SAFE)
+          await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              ownerId: user.id,
+            },
+            data: {
+              stock: {
+                decrement: item.quantity,
+              },
+            },
+          });
 
-  // 2️⃣ Stock decrement
-  await tx.product.update({
-    where: { id: item.productId },
-    data: {
-      stock: {
-        decrement: item.quantity,
-      },
-    },
-  });
-
-  // 3️⃣ 🔥 STOCK LOG (THIS IS WHAT YOU ADD)
-  await tx.stockLog.create({
-    data: {
-      productId: item.productId,
-      change: -item.quantity,           // minus because sold
-      type: "BILL",
-      reason: `Invoice #${bill.id}`,
-      createdBy: user.userId,
-    },
-  });
-}
+          // 3️⃣ Stock log (AUDIT SAFE)
+          await tx.stockLog.create({
+            data: {
+              ownerId: user.id,
+              productId: item.productId,
+              change: -item.quantity,
+              type: "BILL",
+              reason: `Invoice #${bill.id}`,
+            },
+          });
+        }
 
         /* ======================
            CLEAR CART
         ====================== */
         await tx.cartItem.deleteMany({
-          where: { userId: user.userId },
+          where: {
+            ownerId: user.id,              // ✅ FIXED
+          },
         });
 
         return bill;

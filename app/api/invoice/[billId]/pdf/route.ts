@@ -2,11 +2,14 @@ export const runtime = "nodejs";
 
 import { prisma } from "@/lib/db";
 import PDFDocument from "pdfkit";
+import { getAuthUser } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
   context: { params: Promise<{ billId: string }> }
 ) {
+  const user = await getAuthUser();
+
   const { billId } = await context.params;
   const id = Number(billId);
 
@@ -17,8 +20,14 @@ export async function GET(
     );
   }
 
-  const bill = await prisma.bill.findUnique({
-    where: { id },
+  /* ======================
+     LOAD BILL (OWNER SAFE)
+  ====================== */
+  const bill = await prisma.bill.findFirst({
+    where: {
+      id,
+      ownerId: user.id, // 🔒 OWNER ENFORCED
+    },
     include: {
       items: {
         include: { product: true },
@@ -33,6 +42,9 @@ export async function GET(
     );
   }
 
+  /* ======================
+     PDF GENERATION
+  ====================== */
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   const chunks: Buffer[] = [];
 
@@ -41,15 +53,15 @@ export async function GET(
   /* =====================
      COMPANY HEADER
   ===================== */
-  doc.fontSize(20).text(bill.companyName, { align: "center" });
+  doc.fontSize(20).text("Billing Pro Pvt Ltd", { align: "center" });
   doc.moveDown(0.3);
   doc
     .fontSize(10)
-    .text(bill.companyAddress ?? "-", { align: "center" });
-  doc
-    .text(`GSTIN: ${bill.companyGstin}`, {
-      align: "center",
-    });
+    .text(
+      "1st Floor, Business Park, Kolkata, West Bengal - 700001",
+      { align: "center" }
+    );
+  doc.text("GSTIN: 22AAAAA0000A1Z5", { align: "center" });
 
   doc.moveDown(1);
 
@@ -75,6 +87,10 @@ export async function GET(
 
   if (bill.customerMobile) {
     doc.text(`Mobile: ${bill.customerMobile}`);
+  }
+
+  if (bill.customerGstin) {
+    doc.text(`GSTIN: ${bill.customerGstin}`);
   }
 
   doc.moveDown(1);
@@ -118,10 +134,10 @@ export async function GET(
     `Taxable Amount: ₹${bill.taxableAmount.toFixed(2)}`,
     { align: "right" }
   );
-  doc.text(`CGST (9%): ₹${bill.cgst.toFixed(2)}`, {
+  doc.text(`CGST: ₹${bill.cgst.toFixed(2)}`, {
     align: "right",
   });
-  doc.text(`SGST (9%): ₹${bill.sgst.toFixed(2)}`, {
+  doc.text(`SGST: ₹${bill.sgst.toFixed(2)}`, {
     align: "right",
   });
 

@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
-import { getAuthUser } from "@/lib/get-auth-user";
-import styles from "./dashboard.module.css";
-import Header from "./header";
-import Sidebar from "./sidebar";
+
+import ClientShell from "./client-shell";
+import { getAuthUser } from "@/lib/auth";
+
+
+
 
 export default async function DashboardLayout({
   children,
@@ -12,15 +14,5 @@ export default async function DashboardLayout({
   // 🔒 Server-side auth guard
   await getAuthUser();
 
-  return (
-    <div className={styles.app}>
-      <Sidebar />
-      <div className={styles.main}>
-        <Header />
-        <main className={styles.content}>
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+  return <ClientShell>{children}</ClientShell>;
 }

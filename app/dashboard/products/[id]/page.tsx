@@ -1,19 +1,29 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+
+import { requireRole } from "@/lib/role-guard";
 import styles from "../products.module.css";
+import { getAuthUser } from "@/lib/auth";
 
 export default async function ProductDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const user = await getAuthUser();
+  requireRole(user.role, ["ADMIN", "STAFF"]);
+
   const { id } = await params;
   const productId = Number(id);
 
   if (isNaN(productId)) notFound();
 
-  const product = await prisma.product.findUnique({
-    where: { id: productId },
+  // 🔒 OWNER ISOLATION
+  const product = await prisma.product.findFirst({
+    where: {
+      id: productId,
+      ownerId: user.id,
+    },
     include: {
       stockLogs: {
         orderBy: { createdAt: "desc" },
@@ -72,7 +82,9 @@ export default async function ProductDetailPage({
           </span>
           <span
             className={
-              isLow ? styles.statusLow : styles.statusOk
+              isLow
+                ? styles.statusLow
+                : styles.statusOk
             }
           >
             {isLow ? "Low Stock" : "Healthy"}

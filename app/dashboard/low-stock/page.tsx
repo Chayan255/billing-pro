@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
+
 import { requireRole } from "@/lib/role-guard";
 import styles from "./low-stock.module.css";
+import { getAuthUser } from "@/lib/auth";
 
 export default async function LowStockPage() {
   const user = await getAuthUser();

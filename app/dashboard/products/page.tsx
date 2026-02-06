@@ -1,14 +1,19 @@
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
+
 import { requireRole } from "@/lib/role-guard";
 import Link from "next/link";
 import styles from "./products.module.css";
+import { getAuthUser } from "@/lib/auth";
 
 export default async function ProductsPage() {
   const user = await getAuthUser();
   requireRole(user.role, ["ADMIN", "STAFF"]);
 
+  // 🔒 OWNER ISOLATION (MOST IMPORTANT LINE)
   const products = await prisma.product.findMany({
+    where: {
+      ownerId: user.id,
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -16,6 +21,7 @@ export default async function ProductsPage() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>📦 Products & Stock</h1>
+
         <Link
           href="/dashboard/products/purchase"
           className={styles.addBtn}
@@ -40,17 +46,21 @@ export default async function ProductsPage() {
                 <th className={styles.center}>Actions</th>
               </tr>
             </thead>
+
             <tbody>
               {products.map((p) => {
-                const isLow = p.stock <= p.lowStockLevel;
+                const isLow =
+                  p.stock <= p.lowStockLevel;
 
                 return (
                   <tr key={p.id}>
-                   <td className={styles.product}>
-  <Link href={`/dashboard/products/${p.id}`}>
-    {p.name}
-  </Link>
-</td>
+                    <td className={styles.product}>
+                      <Link
+                        href={`/dashboard/products/${p.id}`}
+                      >
+                        {p.name}
+                      </Link>
+                    </td>
 
                     <td>{p.category}</td>
 

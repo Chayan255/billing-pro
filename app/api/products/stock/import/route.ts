@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAuthUser } from "@/lib/get-auth-user";
-import { requireRole } from "@/lib/role-guard";
+import { getAuthUser } from "@/lib/auth";
 import csv from "csv-parser";
 import { Readable } from "stream";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
-  requireRole(user.role, ["ADMIN"]);
 
   const formData = await req.formData();
   const file = formData.get("file") as File;
@@ -20,16 +18,17 @@ export async function POST(req: Request) {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer());
-
   const rows: any[] = [];
 
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     Readable.from(buffer)
       .pipe(csv())
       .on("data", (row) => rows.push(row))
       .on("end", resolve)
       .on("error", reject);
   });
+
+  let created = 0;
 
   await prisma.$transaction(async (tx) => {
     for (const row of rows) {
@@ -39,13 +38,19 @@ export async function POST(req: Request) {
 
       if (!sku || isNaN(qty)) continue;
 
-      let product = await tx.product.findUnique({
-        where: { sku },
+      // ✅ OWNER SAFE lookup
+      let product = await tx.product.findFirst({
+        where: {
+          ownerId: user.id,
+          sku,
+        },
       });
 
+      // ✅ CREATE if not exists
       if (!product) {
         product = await tx.product.create({
           data: {
+            ownerId: user.id,
             sku,
             name: name || sku,
             price: 0,
@@ -55,26 +60,32 @@ export async function POST(req: Request) {
         });
       }
 
+      // ✅ STOCK UPDATE
       await tx.product.update({
         where: { id: product.id },
         data: {
-          stock: { increment: qty },
+          stock: {
+            increment: qty,
+          },
         },
       });
 
+      // ✅ STOCK LOG
       await tx.stockLog.create({
         data: {
+          ownerId: user.id,
           productId: product.id,
           change: qty,
           type: "IMPORT",
-          reason: "Opening stock import",
-          createdBy: user.userId,
+          reason: "CSV stock import",
         },
       });
+
+      created++;
     }
   });
 
   return NextResponse.json({
-    message: `Imported ${rows.length} rows successfully`,
+    message: `Imported ${created} items`,
   });
 }

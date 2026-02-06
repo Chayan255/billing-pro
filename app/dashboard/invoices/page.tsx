@@ -1,16 +1,17 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { getAuthUser } from "@/lib/get-auth-user";
 import { requireRole } from "@/lib/role-guard";
 import styles from "./invoices.module.css";
+import { getAuthUser } from "@/lib/auth";
 
 export default async function InvoicesPage() {
   const user = await getAuthUser();
-requireRole(user.role, ["ADMIN", "STAFF"]);
-
   requireRole(user.role, ["ADMIN", "STAFF"]);
 
   const bills = await prisma.bill.findMany({
+    where: {
+      ownerId: user.id, // 🔒 ONLY logged-in user's invoices
+    },
     orderBy: { createdAt: "desc" },
     include: {
       items: true,
@@ -38,8 +39,12 @@ requireRole(user.role, ["ADMIN", "STAFF"]);
             {bills.map((bill) => (
               <tr key={bill.id}>
                 <td>{bill.id}</td>
-                <td>{new Date(bill.createdAt).toLocaleString()}</td>
-                <td className={styles.right}>{bill.items.length}</td>
+                <td>
+                  {new Date(bill.createdAt).toLocaleString()}
+                </td>
+                <td className={styles.right}>
+                  {bill.items.length}
+                </td>
                 <td className={styles.right}>
                   ₹{bill.totalAmount.toFixed(2)}
                 </td>
