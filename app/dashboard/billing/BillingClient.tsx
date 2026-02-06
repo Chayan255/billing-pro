@@ -27,6 +27,8 @@ export default function BillingClient({
   /* ================= CUSTOMER ================= */
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
+  const [customerGstin, setCustomerGstin] = useState("");
+
 
   /* ================= UI ================= */
   const [search, setSearch] = useState("");
@@ -177,13 +179,15 @@ export default function BillingClient({
     const res = await fetch("/api/bill", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customerName,
-        customerMobile: mobile || null,
-        gstPercent,
-        paymentMethod,
-        roundOff,
-      }),
+   body: JSON.stringify({
+  customerName,
+  customerMobile: mobile || null,
+  customerGstin: customerGstin || null,
+  gstPercent,
+  paymentMethod,
+  roundOff,
+}),
+
     });
 
     const data = await res.json();
@@ -251,6 +255,11 @@ export default function BillingClient({
           value={mobile}
           onChange={(e) => setMobile(e.target.value)}
         />
+      <input
+  placeholder="Customer GSTIN (optional)"
+  value={customerGstin}
+  onChange={(e) => setCustomerGstin(e.target.value)}
+/>
 
         {/* Payment Method */}
         <select

@@ -24,7 +24,7 @@ export default function Home() {
       
       <div className="bg-white/95 backdrop-blur shadow-2xl rounded-2xl p-10 w-full max-w-md text-center">
         <h1 className="text-3xl font-bold text-gray-900">
-          Billing Pro
+          Softa Tech
         </h1>
 
         <p className="text-sm text-gray-500 mt-2">

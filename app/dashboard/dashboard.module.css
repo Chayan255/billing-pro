@@ -81,22 +81,135 @@
   display: flex;
   flex-direction: column;
 }
-
-/* Header */
+/* =============================
+   HEADER BAR
+============================= */
 .header {
   height: 64px;
+  padding: 0 28px;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 28px;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
 }
 
-.headerTitle {
+.title {
   font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #020617;
+}
+
+/* =============================
+   PROFILE BUTTON
+============================= */
+.profile {
+  position: relative;
+}
+
+.profileBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+  transition: background 0.15s ease;
+}
+
+.profileBtn:hover {
+  background: #f1f5f9;
+}
+
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.userName {
+  font-size: 14px;
+  font-weight: 700;
+  color: #020617;
+}
+
+.userRole {
+  font-size: 12px;
+  color: #64748b;
+}
+
+
+.chevron {
+  font-size: 12px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+
+/* =============================
+   DROPDOWN MENU
+============================= */
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 180px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.12),
+    0 6px 14px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  z-index: 100;
+}
+
+.dropdownItem {
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.dropdownItem:hover {
+  background: #f1f5f9;
+}
+
+.logout {
+  color: #dc2626;
   font-weight: 600;
 }
+
+
+
 
 .userBox {
   display: flex;
@@ -201,4 +314,312 @@
 
 .dropdownItem:hover {
   background: #f3f4f6;
+}
+/* =============================
+   STOCK IMPORT PAGE
+============================= */
+
+.importWrapper {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.importHeader h1 {
+  margin-bottom: 6px;
+}
+
+.importHeader p {
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.importCard {
+  background: #fff;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.importLabel {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.fileInput {
+  margin-bottom: 16px;
+}
+
+.csvHelp {
+  background: #f7f7f7;
+  padding: 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.csvHelp pre {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+
+.errorBox {
+  background: #ffe5e5;
+  color: #b30000;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.successBox {
+  background: #e6fffa;
+  color: #065f46;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.importBtn {
+  padding: 10px 18px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.importBtn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+
+/* =============================
+   MANUAL STOCK ADJUSTMENT
+============================= */
+
+.manualWrapper {
+  max-width: 560px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.manualHeader h1 {
+  margin-bottom: 6px;
+}
+
+.manualHeader p {
+  color: #666;
+  margin-bottom: 24px;
+}
+
+.manualCard {
+  background: #fff;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: #111;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.infoBox {
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #065f46;
+  font-size: 14px;
+}
+
+.primaryBtn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  background: #111;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  background: #999;
+  cursor: not-allowed;
+}
+.menuSection {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  padding-left: 10px;
+}
+/* PAGE */
+.container {
+  padding: 28px 36px;
+  background: #f4f6f8;
+  min-height: 100vh;
+}
+
+/* METRIC CARDS */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.cardLabel {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.cardValue {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #111;
+}
+
+.danger {
+  border-left: 4px solid #c62828;
+}
+
+/* SECTION */
+.section {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 22px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.sectionTitle {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+}
+
+/* TABLE */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table td {
+  padding: 12px;
+  font-size: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.right {
+  text-align: right;
+}
+
+/* EMPTY */
+.empty {
+  color: #6b7280;
+  font-size: 14px;
+  padding: 16px;
+}
+/* =============================
+   SIDEBAR ACTIVE STATES
+============================= */
+.active {
+  background: #f1f5f9;
+  font-weight: 700;
+  border-left: 4px solid #2563eb;
+}
+
+.activePrimary {
+  background: #020617 !important;
+  color: #ffffff !important;
+  border-left: 4px solid #2563eb;
+}
+/* =============================
+   CARD HOVER ANIMATION
+============================= */
+.card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.08),
+    0 4px 10px rgba(0, 0, 0, 0.05);
+}
+/* =============================
+   PRINT MODE
+============================= */
+@media print {
+  /* Hide layout */
+  .sidebar,
+  .header {
+    display: none !important;
+  }
+
+  /* Remove padding / background */
+  .main,
+  .content {
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* Make invoice full width */
+  .printArea {
+    width: 100%;
+    margin: 0;
+  }
 }

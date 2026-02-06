@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/**
+ * =======================
+ * ENUMS
+ * =======================
+ */
 enum Role {
   ADMIN
   STAFF
@@ -29,9 +34,18 @@ enum GstType {
   IGST
 }
 
-/* =======================
-   USER
-======================= */
+enum StockType {
+  PURCHASE
+  MANUAL
+  BILL
+  IMPORT
+}
+
+/**
+ * =======================
+ * USER
+ * =======================
+ */
 model User {
   id        Int      @id @default(autoincrement())
   name      String
@@ -39,11 +53,17 @@ model User {
   password  String
   role      Role
   createdAt DateTime @default(now())
+
+  // relations
+  stockLogs StockLog[]
+  purchases Purchase[]
 }
 
-/* =======================
-   CUSTOMER
-======================= */
+/**
+ * =======================
+ * CUSTOMER
+ * =======================
+ */
 model Customer {
   id        Int      @id @default(autoincrement())
   name      String
@@ -54,9 +74,11 @@ model Customer {
   bills Bill[]
 }
 
-/* =======================
-   PRODUCT
-======================= */
+/**
+ * =======================
+ * PRODUCT
+ * =======================
+ */
 model Product {
   id        Int      @id @default(autoincrement())
   name      String
@@ -64,62 +86,82 @@ model Product {
   price     Float
   stock     Int
   category  String
+  hsnCode        String? 
+   lowStockLevel  Int      @default(5) 
   createdAt DateTime @default(now())
 
   billItems BillItem[]
   cartItems CartItem[]
+  stockLogs StockLog[]
+  purchases Purchase[]
 }
 
-/* =======================
-   BILL (PROFESSIONAL GST)
-======================= */
+/**
+ * =======================
+ * BILL
+ * =======================
+ */
 model Bill {
   id Int @id @default(autoincrement())
 
-  /* Customer */
+  /* ======================
+     CUSTOMER SNAPSHOT
+  ====================== */
   customerName   String?
   customerMobile String?
+  customerGstin  String?        // ✅ NEW
   customerId     Int?
   customer       Customer? @relation(fields: [customerId], references: [id])
 
-  /* Company snapshot */
-  companyName    String   @default("Billing Pro")
-  companyGstin   String?
-  companyAddress String?
+  /* ======================
+     COMPANY SNAPSHOT
+  ====================== */
+  companyName       String  @default("Billing Pro")
+  companyGstin      String?
+  companyAddress    String?
+  companyState      String?     // ✅ NEW
+  companyStateCode  String?     // ✅ NEW
 
-  /* GST */
-  gstType     GstType
-  gstPercent  Float
+  /* ======================
+     GST
+  ====================== */
+  gstType       GstType
+  gstPercent    Float
   taxableAmount Float
-  cgst        Float
-  sgst        Float
-  igst        Float
+  cgst          Float
+  sgst          Float
+  igst          Float
 
-  /* Discounts & Total */
+  /* ======================
+     TOTALS
+  ====================== */
   totalDiscount Float
-  roundOff      Float
+  roundOff      Float          // ✅ already used in code
   totalAmount   Float
 
-  /* Payment */
+  /* ======================
+     PAYMENT
+  ====================== */
   paymentMethod PaymentMethod
-
-  notes String?
+  notes         String?
 
   createdAt DateTime @default(now())
 
   items BillItem[]
 }
 
-/* =======================
-   BILL ITEM
-======================= */
+/**
+ * =======================
+ * BILL ITEM
+ * =======================
+ */
 model BillItem {
   id        Int @id @default(autoincrement())
   billId    Int
   productId Int
 
-  quantity  Int
-  price     Float
+  quantity Int
+  price    Float
 
   discount     Float
   discountType DiscountType
@@ -130,16 +172,18 @@ model BillItem {
   product Product @relation(fields: [productId], references: [id])
 }
 
-/* =======================
-   CART ITEM
-======================= */
+/**
+ * =======================
+ * CART ITEM
+ * =======================
+ */
 model CartItem {
   id        Int @id @default(autoincrement())
   userId    Int
   productId Int
 
-  quantity  Int
-  price     Float
+  quantity Int
+  price    Float
 
   discount     Float
   discountType DiscountType
@@ -148,4 +192,56 @@ model CartItem {
   createdAt DateTime @default(now())
 
   product Product @relation(fields: [productId], references: [id])
+}
+
+/**
+ * =======================
+ * STOCK LOG (AUDIT)
+ * =======================
+ */
+model StockLog {
+  id Int @id @default(autoincrement())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  change Int
+  type   StockType
+  reason String? @db.VarChar(255)
+
+  createdBy Int
+  user      User @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+
+  @@map("stocklog") 
+}
+
+/**
+ * =======================
+ * PURCHASE
+ * =======================
+ */
+model Purchase {
+  id Int @id @default(autoincrement())
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  supplier  String
+  quantity  Int
+  costPrice Float?
+
+  createdBy Int
+  user      User @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([createdAt])
+
+   @@map("purchase")
 }
