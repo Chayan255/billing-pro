@@ -1,6 +1,5 @@
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-
 import { requireRole } from "@/lib/role-guard";
 import { NextResponse } from "next/server";
 
@@ -10,6 +9,7 @@ export async function GET() {
 
   const products = await prisma.product.findMany({
     where: {
+      ownerId: user.id, // 🔒 OWNER ISOLATION
       stock: {
         lte: prisma.product.fields.lowStockLevel,
       },

@@ -1,0 +1,130 @@
+.wrapper {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 0 20px;
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.header p {
+  margin: 0;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Card */
+.card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+}
+
+/* Label */
+.label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #111827;
+}
+
+/* File input */
+.fileInput {
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px dashed #cbd5f5;
+  background: #f8fafc;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+.fileInput::file-selector-button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 12px;
+}
+
+.fileInput::file-selector-button:hover {
+  background: #000000;
+}
+
+/* CSV help */
+.csvHelp {
+  background: #f1f5f9;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 18px;
+  color: #374151;
+}
+
+.csvHelp strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.csvHelp pre {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 12px;
+  color: #111827;
+}
+
+/* Alerts */
+.error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.success {
+  background: #dcfce7;
+  color: #166534;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* Button */
+.button {
+  width: 100%;
+  padding: 12px;
+  background: #111827;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.button:hover {
+  background: #000000;
+}
+
+.button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}

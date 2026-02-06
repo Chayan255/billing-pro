@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-
 import { requireRole } from "@/lib/role-guard";
 import styles from "./low-stock.module.css";
 import { getAuthUser } from "@/lib/auth";
@@ -8,13 +7,16 @@ export default async function LowStockPage() {
   const user = await getAuthUser();
   requireRole(user.role, ["ADMIN", "STAFF"]);
 
-  const products = await prisma.product.findMany({
+  /* 🔒 OWNER + LOW STOCK SAFE QUERY */
+  const lowStock = await prisma.product.findMany({
+    where: {
+      ownerId: user.id, // 🔒 OWNER ISOLATION
+      stock: {
+        lte: prisma.product.fields.lowStockLevel,
+      },
+    },
     orderBy: { stock: "asc" },
   });
-
-  const lowStock = products.filter(
-    (p) => p.stock <= p.lowStockLevel
-  );
 
   return (
     <div className={styles.container}>
@@ -53,9 +55,7 @@ export default async function LowStockPage() {
                     {p.lowStockLevel}
                   </td>
                   <td className={styles.center}>
-                    <span className={styles.badge}>
-                      LOW
-                    </span>
+                    <span className={styles.badge}>LOW</span>
                   </td>
                 </tr>
               ))}

@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/db";
-
 import styles from "./dashboard.module.css";
 import { getAuthUser } from "@/lib/auth";
 
 export default async function DashboardHome() {
   const user = await getAuthUser();
 
-  // 🕒 Today range
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
@@ -20,7 +18,6 @@ export default async function DashboardHome() {
     lowStockCount,
     recentInvoices,
   ] = await Promise.all([
-    // ✅ Today sales (OWNER SAFE)
     prisma.bill.aggregate({
       _sum: { totalAmount: true },
       where: {
@@ -32,17 +29,14 @@ export default async function DashboardHome() {
       },
     }),
 
-    // ✅ Total invoices (OWNER SAFE)
     prisma.bill.count({
       where: { ownerId: user.id },
     }),
 
-    // ✅ Total products (OWNER SAFE)
     prisma.product.count({
       where: { ownerId: user.id },
     }),
 
-    // ✅ Low stock (compare stock vs lowStockLevel)
     prisma.product.count({
       where: {
         ownerId: user.id,
@@ -52,7 +46,6 @@ export default async function DashboardHome() {
       },
     }),
 
-    // ✅ Recent invoices (OWNER SAFE)
     prisma.bill.findMany({
       where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },
@@ -62,22 +55,14 @@ export default async function DashboardHome() {
 
   return (
     <div className={styles.container}>
-      {/* METRIC CARDS */}
+      {/* ================= METRICS ================= */}
       <div className={styles.cards}>
         <Metric
           label="Today Sales"
-          value={`₹ ${
-            todaySales._sum.totalAmount?.toFixed(2) ?? "0.00"
-          }`}
+          value={`₹ ${todaySales._sum.totalAmount?.toFixed(2) ?? "0.00"}`}
         />
-        <Metric
-          label="Total Invoices"
-          value={totalInvoices}
-        />
-        <Metric
-          label="Products"
-          value={totalProducts}
-        />
+        <Metric label="Total Invoices" value={totalInvoices} />
+        <Metric label="Products" value={totalProducts} />
         <Metric
           label="Low Stock Items"
           value={lowStockCount}
@@ -85,10 +70,10 @@ export default async function DashboardHome() {
         />
       </div>
 
-      {/* RECENT INVOICES */}
+      {/* ================= RECENT INVOICES ================= */}
       <div className={styles.section}>
         <h2 className={styles.sectionTitle}>
-          🧾 Recent Invoices
+          Recent Invoices
         </h2>
 
         {recentInvoices.length === 0 ? (
@@ -96,38 +81,37 @@ export default async function DashboardHome() {
             No invoices yet
           </div>
         ) : (
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Date</th>
-                <th className={styles.right}>
-                  Total
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentInvoices.map((bill) => (
-                <tr key={bill.id}>
-                  <td>#{bill.id}</td>
-                  <td>
-                    {new Date(
-                      bill.createdAt
-                    ).toLocaleDateString()}
-                  </td>
-                  <td className={styles.right}>
-                    ₹ {bill.totalAmount.toFixed(2)}
-                  </td>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Date</th>
+                  <th className={styles.right}>Total</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentInvoices.map((bill) => (
+                  <tr key={bill.id}>
+                    <td>#{bill.id}</td>
+                    <td>
+                      {new Date(bill.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className={styles.right}>
+                      ₹ {bill.totalAmount.toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
+/* ================= METRIC CARD ================= */
 function Metric({
   label,
   value,
@@ -139,16 +123,10 @@ function Metric({
 }) {
   return (
     <div
-      className={`${styles.card} ${
-        danger ? styles.danger : ""
-      }`}
+      className={`${styles.card} ${danger ? styles.danger : ""}`}
     >
-      <span className={styles.cardLabel}>
-        {label}
-      </span>
-      <span className={styles.cardValue}>
-        {value}
-      </span>
+      <span className={styles.cardLabel}>{label}</span>
+      <span className={styles.cardValue}>{value}</span>
     </div>
   );
 }

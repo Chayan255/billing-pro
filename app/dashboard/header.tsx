@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./dashboard.module.css";
 
 type Me = {
@@ -13,8 +14,8 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [me, setMe] = useState<Me | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
-  /* Fetch session user */
   useEffect(() => {
     fetch("/api/me", { credentials: "include" })
       .then(async (r) => {
@@ -22,15 +23,11 @@ export default function Header() {
           window.location.href = "/login";
           return;
         }
-        const data = await r.json();
-        setMe(data);
+        setMe(await r.json());
       })
-      .catch(() => {
-        window.location.href = "/login";
-      });
+      .catch(() => (window.location.href = "/login"));
   }, []);
 
-  /* Outside click close */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -41,36 +38,36 @@ export default function Header() {
       }
     };
     document.addEventListener("mousedown", handler);
-    return () =>
-      document.removeEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const logout = async () => {
-    await fetch("/api/logout", {
-      method: "POST",
-      credentials: "include",
-    });
+    await fetch("/api/logout", { method: "POST", credentials: "include" });
     window.location.href = "/login";
   };
 
-  const initial =
-    me?.name?.charAt(0)?.toUpperCase() ?? "?";
+  const goProfile = () => {
+    setOpen(false);
+    router.push("/dashboard/profile");
+  };
+
+  const initial = me?.name?.charAt(0)?.toUpperCase() ?? "?";
 
   return (
     <header className={styles.header}>
-      <div>
+      <div className={styles.brand}>
         <h1 className={styles.title}>Softa</h1>
         {me?.businessType && (
-          <div className={styles.businessTag}>
+          <span className={styles.businessTag}>
             {me.businessType.replace("_", " ")}
-          </div>
+          </span>
         )}
       </div>
 
       <div className={styles.profile} ref={dropdownRef}>
         <button
           className={styles.profileBtn}
-          onClick={() => setOpen((p) => !p)}
+          onClick={() => setOpen(p => !p)}
         >
           <div className={styles.avatar}>{initial}</div>
 
@@ -78,9 +75,7 @@ export default function Header() {
             <span className={styles.userName}>
               {me?.name ?? "Loading..."}
             </span>
-            <span className={styles.userRole}>
-              {me?.role}
-            </span>
+            <span className={styles.userRole}>{me?.role}</span>
           </div>
 
           <span
@@ -94,7 +89,10 @@ export default function Header() {
 
         {open && (
           <div className={styles.dropdown}>
-            <button className={styles.dropdownItem}>
+            <button
+              className={styles.dropdownItem}
+              onClick={goProfile}
+            >
               Profile
             </button>
 

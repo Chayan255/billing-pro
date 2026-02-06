@@ -1,0 +1,110 @@
+.wrapper {
+  padding: 32px;
+  background: #f8fafc;
+  min-height: calc(100vh - 64px);
+  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.subTitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ================= FILTERS ================= */
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.filters select,
+.filters input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.filters select:focus,
+.filters input:focus {
+  outline: none;
+  border-color: #111827;
+}
+
+/* ================= STATES ================= */
+.state {
+  font-size: 14px;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 40px;
+}
+
+/* ================= TABLE ================= */
+.tableWrap {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.table thead th {
+  background: #f3f4f6;
+  text-align: left;
+  padding: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.table td {
+  padding: 12px;
+  border-top: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.right {
+  text-align: right;
+}
+
+.muted {
+  color: #9ca3af;
+}
+
+/* ================= BADGES ================= */
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* ================= CHANGE COLORS ================= */
+.positive {
+  color: #059669;
+  font-weight: 600;
+}
+
+.negative {
+  color: #dc2626;
+  font-weight: 600;
+}

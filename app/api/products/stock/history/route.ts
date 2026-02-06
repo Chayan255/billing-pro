@@ -19,9 +19,7 @@ export async function GET(req: Request) {
       ownerId: user.id, // 🔒 OWNER ISOLATION
     };
 
-    /* ======================
-       PRODUCT FILTER (SAFE)
-    ====================== */
+    /* ================= PRODUCT FILTER ================= */
     if (productIdParam) {
       const productId = Number(productIdParam);
 
@@ -50,30 +48,20 @@ export async function GET(req: Request) {
       where.productId = productId;
     }
 
-    /* ======================
-       TYPE FILTER
-    ====================== */
+    /* ================= TYPE FILTER ================= */
     if (type) {
       where.type = type;
     }
 
-    /* ======================
-       DATE FILTER (SAFE)
-    ====================== */
+    /* ================= DATE FILTER ================= */
     if (from || to) {
       where.createdAt = {
-        ...(from && {
-          gte: new Date(`${from}T00:00:00.000Z`),
-        }),
-        ...(to && {
-          lte: new Date(`${to}T23:59:59.999Z`),
-        }),
+        ...(from && { gte: new Date(`${from}T00:00:00.000Z`) }),
+        ...(to && { lte: new Date(`${to}T23:59:59.999Z`) }),
       };
     }
 
-    /* ======================
-       FETCH STOCK LOGS
-    ====================== */
+    /* ================= FETCH LOGS ================= */
     const logs = await prisma.stockLog.findMany({
       where,
       orderBy: { createdAt: "desc" },

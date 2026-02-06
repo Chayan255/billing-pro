@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import styles from "../../dashboard.module.css";
+import styles from "./manual-stock.module.css";
 
 type Product = {
   id: number;
@@ -53,16 +53,16 @@ export default function ManualStockPage() {
   };
 
   return (
-    <div className={styles.manualWrapper}>
-      <div className={styles.manualHeader}>
-        <h1>🛠 Manual Stock Adjustment</h1>
+    <div className={styles.wrapper}>
+      <div className={styles.header}>
+        <h1>Manual Stock Adjustment</h1>
         <p>
           Increase or decrease stock manually with a
           mandatory reason.
         </p>
       </div>
 
-      <div className={styles.manualCard}>
+      <div className={styles.card}>
         {/* Product */}
         <label className={styles.label}>Product</label>
         <select
@@ -110,7 +110,7 @@ export default function ManualStockPage() {
         )}
 
         <button
-          className={styles.primaryBtn}
+          className={styles.button}
           onClick={submit}
           disabled={loading}
         >

@@ -1,18 +1,17 @@
-// middleware.ts
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(req: NextRequest) {
-  const token = req.cookies.get("token")?.value;
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("token")?.value;
+  const pathname = request.nextUrl.pathname;
 
-  // ❌ Token নাই → redirect
-  if (!token) {
-    return NextResponse.redirect(
-      new URL("/login", req.url)
-    );
+  // 🔒 protect dashboard
+  if (pathname.startsWith("/dashboard")) {
+    if (!token) {
+      const loginUrl = new URL("/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
-  // ✅ Token আছে → allow
   return NextResponse.next();
 }
 

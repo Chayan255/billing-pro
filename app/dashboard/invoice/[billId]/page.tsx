@@ -17,13 +17,13 @@ export default async function InvoicePage({
   const id = Number(billId);
   if (!id) notFound();
 
-  /* 🔒 OWNER SAFE LOAD */
   const bill = await prisma.bill.findFirst({
     where: {
       id,
       ownerId: user.id,
     },
     include: {
+      owner: true, // ✅ IMPORTANT
       items: {
         include: {
           product: true,
@@ -34,6 +34,8 @@ export default async function InvoicePage({
 
   if (!bill) notFound();
 
+  const owner = bill.owner;
+
   return (
     <div className={styles.printRoot}>
       <div className={styles.invoice}>
@@ -41,14 +43,16 @@ export default async function InvoicePage({
         <header className={styles.header}>
           <div>
             <h1 className={styles.companyName}>
-              {bill.companyName}
+              {owner.businessName || "Business Name"}
             </h1>
+
             <p className={styles.muted}>
-              {bill.companyAddress}
+              {owner.companyAddress || "-"}
             </p>
-            {bill.companyGstin && (
+
+            {owner.companyGstin && (
               <p className={styles.muted}>
-                <strong>GSTIN:</strong> {bill.companyGstin}
+                <strong>GSTIN:</strong> {owner.companyGstin}
               </p>
             )}
           </div>
@@ -116,9 +120,7 @@ export default async function InvoicePage({
                   <td className={styles.right}>
                     ₹{item.price.toFixed(2)}
                   </td>
-                  <td className={styles.right}>
-                    {discountLabel}
-                  </td>
+                  <td className={styles.right}>{discountLabel}</td>
                   <td className={styles.right}>
                     {item.gstPercent}%
                   </td>
@@ -169,7 +171,7 @@ export default async function InvoicePage({
           </p>
 
           <div className={styles.sign}>
-            <p>For {bill.companyName}</p>
+            <p>For {owner.businessName || "Business"}</p>
             <div className={styles.signLine} />
             <p>Authorised Signatory</p>
           </div>

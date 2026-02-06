@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import styles from "../../dashboard.module.css";
+import styles from "./import-stock.module.css";
 
 export default function ImportStockPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -40,27 +40,20 @@ export default function ImportStockPage() {
   };
 
   return (
-    <div className={styles.importWrapper}>
-      <div className={styles.importHeader}>
-        <h1>📥 Stock Import</h1>
-        <p>
-          Upload opening stock or bulk stock update
-          using CSV file.
-        </p>
+    <div className={styles.wrapper}>
+      <div className={styles.header}>
+        <h1>Stock Import</h1>
+        <p>Upload opening stock or bulk stock update using CSV file.</p>
       </div>
 
-      <div className={styles.importCard}>
-        <label className={styles.importLabel}>
-          CSV File
-        </label>
+      <div className={styles.card}>
+        <label className={styles.label}>CSV File</label>
 
         <input
           type="file"
           accept=".csv"
           className={styles.fileInput}
-          onChange={(e) =>
-            setFile(e.target.files?.[0] || null)
-          }
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
 
         <div className={styles.csvHelp}>
@@ -72,20 +65,11 @@ SKU002,Crocin,50
           </pre>
         </div>
 
-        {error && (
-          <div className={styles.errorBox}>
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div className={styles.successBox}>
-            {message}
-          </div>
-        )}
+        {error && <div className={styles.error}>{error}</div>}
+        {message && <div className={styles.success}>{message}</div>}
 
         <button
-          className={styles.importBtn}
+          className={styles.button}
           onClick={upload}
           disabled={loading}
         >

@@ -50,15 +50,22 @@ enum StockType {
    USER (BUSINESS OWNER)
 ======================= */
 model User {
-  id            Int          @id @default(autoincrement())
-  name          String
-  email         String       @unique
-  password      String
-  role          Role
-  businessType  BusinessType
-  businessName  String
-  isVerified    Boolean      @default(false)
-  createdAt     DateTime     @default(now())
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique
+  password     String
+  role         Role
+  businessType BusinessType
+
+  // 🏢 COMPANY PROFILE
+  businessName    String
+  companyGstin    String?
+  companyAddress  String?
+  companyState    String?
+  companyStateCode String?
+
+  isVerified   Boolean      @default(true)
+  createdAt    DateTime     @default(now())
 
   products   Product[]
   customers  Customer[]
@@ -67,6 +74,7 @@ model User {
   stockLogs  StockLog[]
   cartItems  CartItem[]
 }
+
 
 /* =======================
    CUSTOMER

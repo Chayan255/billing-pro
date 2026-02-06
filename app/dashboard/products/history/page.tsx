@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import styles from "./stock-history.module.css";
 
 type Log = {
   id: number;
@@ -13,7 +14,7 @@ type Log = {
     name?: string;
   } | null;
 
-  user?: {
+  owner?: {
     name?: string;
     role?: string;
   } | null;
@@ -37,8 +38,8 @@ export default function StockHistoryPage() {
     const res = await fetch(
       `/api/products/stock/history?${params.toString()}`
     );
-    const data = await res.json();
 
+    const data = await res.json();
     setLogs(Array.isArray(data.data) ? data.data : []);
     setLoading(false);
   };
@@ -48,12 +49,18 @@ export default function StockHistoryPage() {
   }, [type, from, to]);
 
   return (
-    <div style={{ padding: 30 }}>
-      <h1>📊 Stock History</h1>
+    <div className={styles.wrapper}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>📊 Stock History</h1>
+        <p className={styles.subTitle}>
+          Track all inventory changes
+        </p>
+      </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+      {/* ================= FILTERS ================= */}
+      <div className={styles.filters}>
         <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="">All</option>
+          <option value="">All Types</option>
           <option value="MANUAL">Manual</option>
           <option value="PURCHASE">Purchase</option>
           <option value="BILL">Bill</option>
@@ -64,49 +71,59 @@ export default function StockHistoryPage() {
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
       </div>
 
-      {loading && <p>Loading...</p>}
+      {/* ================= STATES ================= */}
+      {loading && <p className={styles.state}>Loading...</p>}
 
-      {!loading && logs.length === 0 && <p>No history found</p>}
+      {!loading && logs.length === 0 && (
+        <p className={styles.state}>No stock history found</p>
+      )}
 
+      {/* ================= TABLE ================= */}
       {!loading && logs.length > 0 && (
-        <table border={1} cellPadding={8} width="100%">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Product</th>
-              <th>Change</th>
-              <th>Type</th>
-              <th>Reason</th>
-              <th>By</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((l) => (
-              <tr key={l.id}>
-                <td>{new Date(l.createdAt).toLocaleString()}</td>
-
-                <td>
-                  {l.product?.name
-                    ? l.product.name
-                    : <span style={{ color: "#999" }}>—</span>}
-                </td>
-
-                <td style={{ color: l.change > 0 ? "green" : "red" }}>
-                  {l.change > 0 ? `+${l.change}` : l.change}
-                </td>
-
-                <td>{l.type}</td>
-                <td>{l.reason || "-"}</td>
-
-                <td>
-                  {l.user?.name
-                    ? `${l.user.name} (${l.user.role ?? ""})`
-                    : "—"}
-                </td>
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th className={styles.right}>Change</th>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>By</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {logs.map((l) => (
+                <tr key={l.id}>
+                  <td>{new Date(l.createdAt).toLocaleString()}</td>
+
+                  <td>{l.product?.name ?? "—"}</td>
+
+                  <td
+                    className={`${styles.right} ${
+                      l.change > 0 ? styles.positive : styles.negative
+                    }`}
+                  >
+                    {l.change > 0 ? `+${l.change}` : l.change}
+                  </td>
+
+                  <td>
+                    <span className={styles.badge}>{l.type}</span>
+                  </td>
+
+                  <td>{l.reason || "—"}</td>
+
+                  <td>
+                    {l.owner?.name
+                      ? `${l.owner.name}${l.owner.role ? ` (${l.owner.role})` : ""}`
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
