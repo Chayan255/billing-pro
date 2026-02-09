@@ -5,9 +5,18 @@ export const revalidate = 0;
 import { prisma } from "@/lib/db";
 import styles from "./dashboard.module.css";
 import { getAuthUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function DashboardHome() {
-  const user = await getAuthUser();
+  let user;
+
+  // 🔐 AUTH SAFETY
+  try {
+    user = await getAuthUser();
+  } catch {
+    // fallback safety (rare case)
+    redirect("/login");
+  }
 
   /* ======================
      TODAY RANGE (LOCAL SAFE)
@@ -19,7 +28,7 @@ export default async function DashboardHome() {
   endOfToday.setHours(23, 59, 59, 999);
 
   /* ======================
-     QUERIES (CORRECT & FAST)
+     QUERIES (SAFE & FAST)
   ====================== */
   const [
     todaySales,
@@ -28,7 +37,6 @@ export default async function DashboardHome() {
     lowStockCount,
     recentInvoices,
   ] = await Promise.all([
-    // ✅ Today Sales → uses Bill.totalAmount
     prisma.bill.aggregate({
       _sum: { totalAmount: true },
       where: {
@@ -40,17 +48,14 @@ export default async function DashboardHome() {
       },
     }),
 
-    // ✅ Total invoices
     prisma.bill.count({
       where: { ownerId: user.id },
     }),
 
-    // ✅ Total products
     prisma.product.count({
       where: { ownerId: user.id },
     }),
 
-    // ✅ Low stock alert
     prisma.product.count({
       where: {
         ownerId: user.id,
@@ -60,7 +65,6 @@ export default async function DashboardHome() {
       },
     }),
 
-    // ✅ Recent invoices (NO item join)
     prisma.bill.findMany({
       where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },

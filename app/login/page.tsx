@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./login.module.css";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,21 +21,27 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json();
 
-    if (!res.ok) {
-      setError(data.message || "Login failed");
-      return;
+      if (!res.ok) {
+        setError(data.message || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ CORRECT REDIRECT (NO FULL RELOAD)
+      router.replace("/dashboard");
+    } catch (err) {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
     }
-
-    window.location.href = "/dashboard";
   }
 
   return (
@@ -50,7 +59,7 @@ export default function LoginPage() {
           <input
             type="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
 
@@ -59,7 +68,7 @@ export default function LoginPage() {
           <input
             type="password"
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onChange={(e) => setPassword(e.target.value)}
           />
         </div>
 
@@ -73,7 +82,10 @@ export default function LoginPage() {
 
         <p className={styles.footerText}>
           Don’t have an account?{" "}
-          <span onClick={() => (window.location.href = "/register")}>
+          <span
+            onClick={() => router.push("/register")}
+            style={{ cursor: "pointer" }}
+          >
             Create one
           </span>
         </p>

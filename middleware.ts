@@ -4,11 +4,12 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get("token")?.value;
   const pathname = request.nextUrl.pathname;
 
-  // 🔒 protect dashboard
+  // 🔒 protect dashboard routes ONLY
   if (pathname.startsWith("/dashboard")) {
     if (!token) {
-      const loginUrl = new URL("/login", request.url);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(
+        new URL("/login", request.url)
+      );
     }
   }
 

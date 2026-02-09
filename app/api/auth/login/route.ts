@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { signToken } from "@/lib/jwt";
 import { verifyPassword } from "@/lib/password";
 
-
 export const runtime = "nodejs";
 
 const COOKIE_NAME = "token";
@@ -12,6 +11,7 @@ export async function POST(req: Request) {
   try {
     const { email, password } = await req.json();
 
+    // 🔹 Basic validation
     if (!email || !password) {
       return NextResponse.json(
         { message: "Email and password required" },
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // 🔹 Find user
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
+    // 🔹 Verify password
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
       return NextResponse.json(
@@ -38,39 +40,44 @@ export async function POST(req: Request) {
       );
     }
 
-    // Optional verification gate
-    // if (!user.isVerified) {
-    //   return NextResponse.json(
-    //     { message: "Account not verified" },
-    //     { status: 403 }
-    //   );
-    // }
-
+    // 🔹 Sign JWT
     const token = signToken({
       userId: user.id,
       role: user.role,
       businessType: user.businessType,
     });
 
+    // 🔹 Success response
     const response = NextResponse.json({
       success: true,
       role: user.role,
     });
 
+    // 🔥 CRITICAL: COOKIE MUST MATCH LOGOUT + MIDDLEWARE
     response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      sameSite: "lax",
+      path: "/",                       // 🔥 MUST
+      sameSite: "lax",                 // 🔥 MUST
       secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24,
+      maxAge: 60 * 60 * 24,            // 1 day
     });
 
     return response;
   } catch (error) {
     console.error("Login error:", error);
-    return NextResponse.json(
+
+    // 🔹 Safety: never leave stale cookie on error
+    const res = NextResponse.json(
       { message: "Internal server error" },
       { status: 500 }
     );
+
+    res.cookies.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      expires: new Date(0),
+      path: "/",
+    });
+
+    return res;
   }
 }

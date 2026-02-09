@@ -16,18 +16,20 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // 🔐 Fetch logged-in user
   useEffect(() => {
     fetch("/api/me", { credentials: "include" })
       .then(async (r) => {
         if (r.status === 401) {
-          window.location.href = "/login";
+          window.location.replace("/login");
           return;
         }
         setMe(await r.json());
       })
-      .catch(() => (window.location.href = "/login"));
+      .catch(() => window.location.replace("/login"));
   }, []);
 
+  // 🔽 Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (
@@ -41,9 +43,17 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // 🚪 LOGOUT (FIXED)
   const logout = async () => {
-    await fetch("/api/logout", { method: "POST", credentials: "include" });
-    window.location.href = "/login";
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // 🔥 MUST
+      });
+    } finally {
+      // 🔥 Hard redirect = clear client state
+      window.location.replace("/login");
+    }
   };
 
   const goProfile = () => {
@@ -67,7 +77,7 @@ export default function Header() {
       <div className={styles.profile} ref={dropdownRef}>
         <button
           className={styles.profileBtn}
-          onClick={() => setOpen(p => !p)}
+          onClick={() => setOpen((p) => !p)}
         >
           <div className={styles.avatar}>{initial}</div>
 
