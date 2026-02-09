@@ -1,3 +1,7 @@
+// app/dashboard/page.tsx
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { prisma } from "@/lib/db";
 import styles from "./dashboard.module.css";
 import { getAuthUser } from "@/lib/auth";
@@ -5,12 +9,18 @@ import { getAuthUser } from "@/lib/auth";
 export default async function DashboardHome() {
   const user = await getAuthUser();
 
+  /* ======================
+     TODAY RANGE (LOCAL SAFE)
+  ====================== */
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
   const endOfToday = new Date();
   endOfToday.setHours(23, 59, 59, 999);
 
+  /* ======================
+     QUERIES (CORRECT & FAST)
+  ====================== */
   const [
     todaySales,
     totalInvoices,
@@ -18,6 +28,7 @@ export default async function DashboardHome() {
     lowStockCount,
     recentInvoices,
   ] = await Promise.all([
+    // ✅ Today Sales → uses Bill.totalAmount
     prisma.bill.aggregate({
       _sum: { totalAmount: true },
       where: {
@@ -29,14 +40,17 @@ export default async function DashboardHome() {
       },
     }),
 
+    // ✅ Total invoices
     prisma.bill.count({
       where: { ownerId: user.id },
     }),
 
+    // ✅ Total products
     prisma.product.count({
       where: { ownerId: user.id },
     }),
 
+    // ✅ Low stock alert
     prisma.product.count({
       where: {
         ownerId: user.id,
@@ -46,20 +60,28 @@ export default async function DashboardHome() {
       },
     }),
 
+    // ✅ Recent invoices (NO item join)
     prisma.bill.findMany({
       where: { ownerId: user.id },
       orderBy: { createdAt: "desc" },
       take: 5,
+      select: {
+        id: true,
+        createdAt: true,
+        totalAmount: true,
+      },
     }),
   ]);
 
   return (
     <div className={styles.container}>
-      {/* ================= METRICS ================= */}
+      {/* ================= METRIC CARDS ================= */}
       <div className={styles.cards}>
         <Metric
           label="Today Sales"
-          value={`₹ ${todaySales._sum.totalAmount?.toFixed(2) ?? "0.00"}`}
+          value={`₹ ${
+            todaySales._sum.totalAmount?.toFixed(2) ?? "0.00"
+          }`}
         />
         <Metric label="Total Invoices" value={totalInvoices} />
         <Metric label="Products" value={totalProducts} />
@@ -78,7 +100,7 @@ export default async function DashboardHome() {
 
         {recentInvoices.length === 0 ? (
           <div className={styles.empty}>
-            No invoices yet
+            No invoices created yet
           </div>
         ) : (
           <div className={styles.tableWrap}>
@@ -87,7 +109,7 @@ export default async function DashboardHome() {
                 <tr>
                   <th>ID</th>
                   <th>Date</th>
-                  <th className={styles.right}>Total</th>
+                  <th className={styles.right}>Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -95,9 +117,13 @@ export default async function DashboardHome() {
                   <tr key={bill.id}>
                     <td>#{bill.id}</td>
                     <td>
-                      {new Date(bill.createdAt).toLocaleDateString()}
+                      {new Date(
+                        bill.createdAt
+                      ).toLocaleDateString()}
                     </td>
-                    <td className={styles.right}>
+                    <td
+                      className={`${styles.right} ${styles.bold}`}
+                    >
                       ₹ {bill.totalAmount.toFixed(2)}
                     </td>
                   </tr>
@@ -118,15 +144,21 @@ function Metric({
   danger,
 }: {
   label: string;
-  value: any;
+  value: string | number;
   danger?: boolean;
 }) {
   return (
     <div
-      className={`${styles.card} ${danger ? styles.danger : ""}`}
+      className={`${styles.card} ${
+        danger ? styles.danger : ""
+      }`}
     >
-      <span className={styles.cardLabel}>{label}</span>
-      <span className={styles.cardValue}>{value}</span>
+      <span className={styles.cardLabel}>
+        {label}
+      </span>
+      <span className={styles.cardValue}>
+        {value}
+      </span>
     </div>
   );
 }

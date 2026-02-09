@@ -5,13 +5,23 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   const user = await getAuthUser();
+
+  // 🔐 AUTH GUARD (TS + runtime safe)
+  if (!user) {
+    return NextResponse.json(
+      { message: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  // 🔐 ROLE GUARD
   requireRole(user.role, ["ADMIN", "STAFF"]);
 
   const products = await prisma.product.findMany({
     where: {
-      ownerId: user.id, // 🔒 OWNER ISOLATION
+      ownerId: user.id, // ✅ safe now
       stock: {
-        lte: prisma.product.fields.lowStockLevel,
+        lte: 5, // 🔥 FIXED (no prisma.fields)
       },
     },
     orderBy: {

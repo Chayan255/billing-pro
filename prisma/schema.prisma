@@ -131,7 +131,6 @@ model Bill {
   ownerId Int
   owner   User @relation(fields: [ownerId], references: [id])
 
-  /* 🔒 COMPANY SNAPSHOT */
   companyName      String
   companyGstin     String?
   companyAddress   String?
@@ -145,25 +144,24 @@ model Bill {
   customerMobile String?
   customerGstin  String?
 
-  gstType       GstType
-  gstPercent    Float
-  taxableAmount Float
-  cgst          Float
-  sgst          Float
-  igst          Float
+  gstType GstType
+  gstPercent Decimal @db.Decimal(5,2)
 
-  totalDiscount Float
-  roundOff      Float
-  totalAmount   Float
+  taxableAmount Decimal @db.Decimal(10,2)
+  cgst          Decimal @db.Decimal(10,2)
+  sgst          Decimal @db.Decimal(10,2)
+  igst          Decimal @db.Decimal(10,2)
+
+  totalDiscount Decimal @db.Decimal(10,2)
+  roundOff      Decimal @db.Decimal(10,2)
+  totalAmount   Decimal @db.Decimal(10,2)
 
   paymentMethod PaymentMethod
-  notes         String?
+  notes String?
 
   createdAt DateTime @default(now())
 
   items BillItem[]
-
-  @@index([ownerId])
 }
 
 /* =======================

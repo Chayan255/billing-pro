@@ -2,17 +2,25 @@ import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/role-guard";
 import styles from "./low-stock.module.css";
 import { getAuthUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
 export default async function LowStockPage() {
   const user = await getAuthUser();
+
+  // 🔐 AUTH GUARD (TS + runtime safe)
+  if (!user) {
+    redirect("/login");
+  }
+
+  // 🔐 ROLE GUARD
   requireRole(user.role, ["ADMIN", "STAFF"]);
 
   /* 🔒 OWNER + LOW STOCK SAFE QUERY */
   const lowStock = await prisma.product.findMany({
     where: {
-      ownerId: user.id, // 🔒 OWNER ISOLATION
+      ownerId: user.id,
       stock: {
-        lte: prisma.product.fields.lowStockLevel,
+        lte: 5, // ✅ FIXED (no prisma.fields)
       },
     },
     orderBy: { stock: "asc" },

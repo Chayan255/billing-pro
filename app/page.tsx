@@ -10,19 +10,23 @@ export default function Home() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
-        router.push("/dashboard");
+        router.push("/login");
       }
     };
+
     window.addEventListener("keydown", handler);
-    return () =>
-      window.removeEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [router]);
 
   return (
-    <main className="min-h-screen flex items-center justify-center
-      bg-gradient-to-br from-slate-900 via-slate-800 to-gray-900">
-      
-      <div className="bg-white/95 backdrop-blur shadow-2xl rounded-2xl p-10 w-full max-w-md text-center">
+    <main
+      className="min-h-screen flex items-center justify-center
+      bg-gradient-to-br from-slate-900 via-slate-800 to-gray-900"
+    >
+      <div
+        className="bg-white/95 backdrop-blur shadow-2xl
+        rounded-2xl p-10 w-full max-w-md text-center"
+      >
         <h1 className="text-3xl font-bold text-gray-900">
           Softa Tech
         </h1>
@@ -37,12 +41,14 @@ export default function Home() {
           System initialized successfully.
         </p>
 
+        {/* 🔐 LOGIN ONLY */}
         <Link
-          href="/dashboard"
-          className="block w-full bg-black text-white py-4 rounded-lg
-            text-lg font-semibold hover:bg-gray-900 transition"
+          href="/login"
+          className="block w-full bg-black text-white py-4
+          rounded-lg text-lg font-semibold
+          hover:bg-gray-900 transition"
         >
-          Go to Dashboard →
+          Go to Login →
         </Link>
 
         <p className="text-xs text-gray-400 mt-6">
